@@ -1,6 +1,6 @@
 {
-  "minVolumeUsd": 9000,
-  "minMcapUsd": 9000,
+  "minVolumeUsd": 18000,
+  "minMcapUsd": 18000,
   "maxMcapUsd": 31400,
   "minGlobalFeesPaidSol": 0.8,
   "maxAgeMinutes": 120,
@@ -10,7 +10,7 @@
   "holdMinSeconds": 60,
   "holdMaxSeconds": 600,
   "takeProfitPercent": 50,
-  "stopLossPercent": -25,
+  "stopLossPercent": -30,
   "slippagePercent": 15,
   "priorityFeeSol": 0.0001
 }

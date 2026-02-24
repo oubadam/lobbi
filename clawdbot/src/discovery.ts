@@ -219,8 +219,9 @@ export async function discoverCandidates(
     }
   }
 
-  if (candidates.length === 0) {
+  const realOnly = candidates.filter((c) => !c.mint.startsWith("DemoMint"));
+  if (realOnly.length === 0) {
     return [];
   }
-  return shuffle(candidates).slice(0, maxCandidates);
+  return shuffle(realOnly).slice(0, maxCandidates);
 }

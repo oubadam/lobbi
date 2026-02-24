@@ -10,19 +10,23 @@ const PORT = Number(process.env.PORT) || 4000;
 
 // In demo mode we don't have a wallet; use mock balance that increases with PnL
 function getBalance(): number {
-  const trades = getTrades();
+  const trades = realTradesOnly(getTrades());
   const totalPnl = trades.reduce((s, t) => s + t.pnlSol, 0);
   return 1 + totalPnl; // start 1 SOL + PnL
 }
 
+function realTradesOnly<T extends { mint: string }>(trades: T[]): T[] {
+  return trades.filter((t) => !t.mint.startsWith("DemoMint"));
+}
+
 app.get("/api/trades", (_req, res) => {
-  const trades = getTrades();
+  const trades = realTradesOnly(getTrades());
   res.json({ trades });
 });
 
 app.get("/api/trades/latest", (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 10, 50);
-  const trades = getTrades().slice(0, limit);
+  const trades = realTradesOnly(getTrades()).slice(0, limit);
   res.json({ trades });
 });
 
@@ -32,7 +36,7 @@ app.get("/api/balance", (_req, res) => {
 });
 
 app.get("/api/pnl", (_req, res) => {
-  const trades = getTrades();
+  const trades = realTradesOnly(getTrades());
   const totalPnlSol = trades.reduce((s, t) => s + t.pnlSol, 0);
   res.json({ totalPnlSol, tradeCount: trades.length });
 });

@@ -45,7 +45,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <img src="/lobbi.jpg" alt="Lobbi" />
+        <img src="/lobbi.png" alt="Lobbi" />
         <h1>LOBBI</h1>
         <span style={{ fontFamily: "var(--ascii-font)", color: "var(--muted)" }}>
           Clawdbot live

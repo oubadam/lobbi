@@ -83,6 +83,30 @@ a:hover { text-decoration: underline; }
   width: 100%;
 }
 
+.screens-row.screens-row-single {
+  max-width: 260px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.screens-row-single .ascii-screen {
+  max-width: 100%;
+}
+
+.lobbi-walk-container.lobbi-center {
+  left: 50%;
+}
+
+.screen-single .screen-symbol {
+  font-size: 1rem;
+}
+
+.screen-message {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 .ascii-screen {
   flex: 1;
   min-width: 140px;
@@ -276,15 +300,76 @@ a:hover { text-decoration: underline; }
 
 .trade-item {
   border-bottom: 1px solid var(--border);
-  padding: 10px 0;
+  padding: 14px 0;
   font-size: 0.95rem;
 }
 
 .trade-item:last-child { border-bottom: none; }
 
+.trade-item-header { margin-bottom: 4px; }
 .trade-symbol { color: var(--lobbi-orange); font-weight: bold; }
-.trade-mint { font-size: 0.85rem; color: var(--muted); word-break: break-all; }
-.trade-why { color: var(--muted); margin: 4px 0; }
+.trade-ca-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.trade-ca-label { font-size: 0.85rem; color: var(--muted); }
+.trade-mint-btn {
+  font: inherit; color: var(--lobbi-orange); background: none; border: 1px solid var(--border);
+  padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;
+}
+.trade-mint-btn:hover { border-color: var(--lobbi-orange); background: rgba(255, 140, 66, 0.1); }
+.trade-copied { color: var(--green); font-size: 0.8rem; }
+.trade-mint-link { font-size: 0.8rem; color: var(--muted); }
+.trade-mint-link:hover { color: var(--lobbi-orange); }
+.trade-why { color: var(--muted); margin: 6px 0; font-size: 0.9rem; }
+
+.trade-hold-pill {
+  display: flex; align-items: center; padding: 0 10px;
+  font-size: 0.8rem; color: var(--muted); background: rgba(255,255,255,0.05);
+  border-radius: 999px; border: 1px solid var(--border);
+}
+
+.trade-boxes {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.trade-box {
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+  min-width: 120px;
+  flex: 1;
+}
+
+.trade-box-buy { border-color: var(--lobbi-orange); background: rgba(255, 140, 66, 0.08); }
+.trade-box-sell { border-color: var(--muted); background: rgba(255, 255, 255, 0.03); }
+
+.trade-box-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.trade-box-value {
+  font-family: var(--pixel-font);
+  font-size: 1rem;
+  color: var(--lobbi-orange);
+}
+
+.trade-box-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.trade-box-sell .trade-pnl {
+  margin-top: 8px;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
 .trade-pnl.positive { color: var(--green); }
 .trade-pnl.negative { color: var(--red); }
 

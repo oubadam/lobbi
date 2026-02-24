@@ -15,10 +15,12 @@ import {
 import type { CandidateCoin, LobbiState } from "./types.js";
 
 const filters = loadFilters();
-const LOOP_DELAY_MS = DEMO_MODE ? 30_000 : 60_000;
+const LOOP_DELAY_MS = 3 * 60 * 1000;
 const HOLD_POLL_MS = 10_000;
-/** Demo: cap hold so one cycle is watchable; still use plan range up to this. */
-const DEMO_HOLD_CAP_MS = 90_000;
+/** Demo: min hold so we don't sell in 8s. */
+const DEMO_HOLD_MIN_MS = 90_000;
+/** Demo: max hold (3 min). */
+const DEMO_HOLD_CAP_MS = 180_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -57,7 +59,7 @@ async function runCycleBody(): Promise<void> {
   }
 
   emitChoosing(candidates);
-  await sleep(4000);
+  await sleep(1000);
 
   const chosen = pickOne(candidates);
   const holderStats = hasBirdeyeApiKey() ? await getHolderStats(chosen.mint) : null;
@@ -75,11 +77,9 @@ async function runCycleBody(): Promise<void> {
   let txSell: string | undefined;
 
   if (DEMO_MODE) {
-    const holdRangeMs = Math.max(0, plan.holdMaxMs - plan.holdMinMs);
-    const holdMs = Math.min(
-      plan.holdMinMs + Math.random() * holdRangeMs,
-      DEMO_HOLD_CAP_MS
-    );
+    const holdMs =
+      DEMO_HOLD_MIN_MS +
+      Math.random() * (DEMO_HOLD_CAP_MS - DEMO_HOLD_MIN_MS);
     await sleep(holdMs);
     const res = await executeSell(chosen.mint, tokenAmount, filters);
     txSell = res.tx;
