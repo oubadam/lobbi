@@ -1,6 +1,6 @@
 {
-  "minVolumeUsd": 5000,
-  "minMcapUsd": 5000,
+  "minVolumeUsd": 9000,
+  "minMcapUsd": 9000,
   "maxMcapUsd": 31400,
   "minGlobalFeesPaidSol": 0.8,
   "maxAgeMinutes": 120,

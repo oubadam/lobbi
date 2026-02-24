@@ -219,12 +219,8 @@ export async function discoverCandidates(
     }
   }
 
-  if (candidates.length === 0 && DEMO_MODE) {
-    const demoPool = exclude?.size
-      ? DEMO_CANDIDATES.filter((c) => !exclude.has(c.mint))
-      : DEMO_CANDIDATES;
-    const use = demoPool.length >= 2 ? demoPool : DEMO_CANDIDATES;
-    return shuffle(use).slice(0, maxCandidates);
+  if (candidates.length === 0) {
+    return [];
   }
   return shuffle(candidates).slice(0, maxCandidates);
 }

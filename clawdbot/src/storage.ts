@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync } from "fs";
 import { join } from "path";
 import type { TradeRecord, LobbiState } from "./types.js";
 import { getDataDir } from "./config.js";
@@ -11,6 +11,8 @@ function dataPath(file: string): string {
 
 const TRADES_FILE = "trades.json";
 const STATE_FILE = "state.json";
+const CYCLE_LOCK_FILE = ".cycle-lock";
+const LOCK_MAX_AGE_MS = 15 * 60 * 1000;
 
 let tradesCache: TradeRecord[] = [];
 let stateCache: LobbiState | null = null;
@@ -61,4 +63,37 @@ export function getState(): LobbiState | null {
 export function setState(s: LobbiState): void {
   writeFileSync(dataPath(STATE_FILE), JSON.stringify(s, null, 2));
   stateCache = s;
+}
+
+/** Try to acquire lock so only one cycle runs at a time (avoid same coin bought twice by two processes). */
+export function tryAcquireCycleLock(): boolean {
+  const p = dataPath(CYCLE_LOCK_FILE);
+  if (existsSync(p)) {
+    try {
+      const data = JSON.parse(readFileSync(p, "utf-8")) as { at: string };
+      const age = Date.now() - new Date(data.at).getTime();
+      if (age < LOCK_MAX_AGE_MS) return false;
+    } catch {
+      /* stale or invalid, remove and take lock */
+    }
+    try {
+      unlinkSync(p);
+    } catch {
+      /* ignore */
+    }
+  }
+  try {
+    writeFileSync(p, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function releaseCycleLock(): void {
+  try {
+    unlinkSync(dataPath(CYCLE_LOCK_FILE));
+  } catch {
+    /* ignore */
+  }
 }

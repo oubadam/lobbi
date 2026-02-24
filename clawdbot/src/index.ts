@@ -1,5 +1,5 @@
 import { loadFilters, getDataDir, DEMO_MODE } from "./config.js";
-import { setState, getRecentMints } from "./storage.js";
+import { setState, getRecentMints, tryAcquireCycleLock, releaseCycleLock } from "./storage.js";
 import { discoverCandidates } from "./discovery.js";
 import { executeBuy, executeSell, recordTrade } from "./trade.js";
 import { planHold } from "./analysis.js";
@@ -29,13 +29,24 @@ function pickOne<T>(arr: T[]): T {
 }
 
 async function runCycle(): Promise<void> {
+  if (!tryAcquireCycleLock()) {
+    return;
+  }
+  try {
+    await runCycleBody();
+  } finally {
+    releaseCycleLock();
+  }
+}
+
+async function runCycleBody(): Promise<void> {
   emitIdle();
   await sleep(2000);
 
   emitThinking();
   await sleep(3000);
 
-  const recentMints = new Set(getRecentMints(5));
+  const recentMints = new Set(getRecentMints(10));
   const candidates = await discoverCandidates(filters, {
     excludeMints: recentMints,
     poolSize: 12,
