@@ -34,6 +34,7 @@ export interface TradeRecord {
   symbol: string;
   name: string;
   why: string;
+  mcapUsd?: number;
   buySol: number;
   buyTokenAmount: number;
   buyTimestamp: string;

@@ -7,7 +7,7 @@
   "maxPositionSol": 0.1,
   "maxPositionPercent": 10,
   "maxCandidates": 3,
-  "holdMinSeconds": 60,
+  "holdMinSeconds": 120,
   "holdMaxSeconds": 600,
   "takeProfitPercent": 50,
   "stopLossPercent": -30,

@@ -1,14 +1,7 @@
 import type { CandidateCoin, Filters } from "./types.js";
-import { DEMO_MODE } from "./config.js";
 import { getTokenList, hasBirdeyeApiKey } from "./birdeye.js";
 
 const DEXSCREENER = "https://api.dexscreener.com/latest/dex";
-
-const DEMO_CANDIDATES: CandidateCoin[] = [
-  { mint: "DemoMint1111111111111111111111111111111111111", symbol: "PEPE", name: "Pepe", reason: "Vol $15k · Mcap $12k (demo)", volumeUsd: 15000, mcapUsd: 12000 },
-  { mint: "DemoMint2222222222222222222222222222222222222", symbol: "WIF", name: "dogwifhat", reason: "Vol $22k · Mcap $18k (demo)", volumeUsd: 22000, mcapUsd: 18000 },
-  { mint: "DemoMint3333333333333333333333333333333333333", symbol: "BONK", name: "Bonk", reason: "Vol $30k · Mcap $25k (demo)", volumeUsd: 30000, mcapUsd: 25000 },
-];
 
 interface DexPair {
   chainId: string;

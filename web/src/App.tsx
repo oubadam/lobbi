@@ -46,40 +46,51 @@ export default function App() {
     <div className="app">
       <header className="header">
         <img src="/lobbi.png" alt="Lobbi" />
-        <h1>LOBBI</h1>
-        <span style={{ fontFamily: "var(--ascii-font)", color: "var(--muted)" }}>
-          Clawdbot live
-        </span>
+        <div className="header-titles">
+          <h1>LOBBI</h1>
+          <span className="header-sub">Clawdbot · one position at a time · 3 min between trades · hold 2–10 min · TP +50% / SL -30%</span>
+        </div>
+        <span className="live-dot" title="Data refreshes every 3s">LIVE</span>
       </header>
 
       {error && (
-        <div className="panel" style={{ borderColor: "var(--red)", color: "var(--red)" }}>
+        <div className="panel panel-error">
           {error} — is the backend running on port 4000?
         </div>
       )}
 
-      <div className="stats-row">
-        <div className="panel stat-box">
-          <div className="panel-title">[ WALLET ]</div>
-          <div className="stat-value">{balance.toFixed(4)} SOL</div>
-          <div style={{ fontSize: "0.9rem", color: "var(--muted)" }}>Claw balance</div>
-        </div>
-        <div className="panel stat-box">
-          <div className="panel-title">[ PNL ]</div>
-          <div
-            className="stat-value"
-            style={{ color: pnl >= 0 ? "var(--green)" : "var(--red)" }}
-          >
-            {pnl >= 0 ? "+" : ""}{pnl.toFixed(4)} SOL
+      <section className="stats-section" aria-label="Balance and PnL">
+        <h2 className="section-label">Balance & PnL</h2>
+        <div className="stats-row">
+          <div className="panel stat-box">
+            <div className="panel-title">Wallet balance</div>
+            <div className="stat-value">{balance.toFixed(4)} SOL</div>
+            <p className="stat-desc">Claw wallet (start 1 SOL + PnL)</p>
           </div>
-          <div style={{ fontSize: "0.9rem", color: "var(--muted)" }}>Total PnL</div>
+          <div className="panel stat-box">
+            <div className="panel-title">Total PnL</div>
+            <div
+              className="stat-value"
+              style={{ color: pnl >= 0 ? "var(--green)" : "var(--red)" }}
+            >
+              {pnl >= 0 ? "+" : ""}{pnl.toFixed(4)} SOL
+            </div>
+            <p className="stat-desc">Sum of all trade PnL (real prices)</p>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <LobbiScene state={state} />
-      <TradeFeed trades={trades} />
+      <section className="claw-section" aria-label="Live claw">
+        <h2 className="section-label">Live claw</h2>
+        <p className="section-desc">Bot picks one coin, holds at least 2 min, then sells. Waits 3 min before next buy.</p>
+        <LobbiScene state={state} />
+      </section>
 
-      <footer className="panel" style={{ marginTop: 24, textAlign: "center", color: "var(--muted)", fontSize: "0.9rem" }}>
+      <section className="feed-section" aria-label="Trade feed">
+        <TradeFeed trades={trades} />
+      </section>
+
+      <footer className="footer">
         Lobbi memecoin · Clawdbot trades Solana memecoins · Creator rewards fund the claw
       </footer>
     </div>

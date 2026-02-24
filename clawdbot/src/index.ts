@@ -14,13 +14,9 @@ import {
 } from "./state.js";
 import type { CandidateCoin, LobbiState } from "./types.js";
 
-const filters = loadFilters();
 const LOOP_DELAY_MS = 3 * 60 * 1000;
 const HOLD_POLL_MS = 10_000;
-/** Demo: min hold so we don't sell in 8s. */
-const DEMO_HOLD_MIN_MS = 90_000;
-/** Demo: max hold (3 min). */
-const DEMO_HOLD_CAP_MS = 180_000;
+const MIN_HOLD_MS = 2 * 60 * 1000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -42,6 +38,7 @@ async function runCycle(): Promise<void> {
 }
 
 async function runCycleBody(): Promise<void> {
+  const filters = loadFilters();
   emitIdle();
   await sleep(2000);
 
@@ -62,6 +59,11 @@ async function runCycleBody(): Promise<void> {
   await sleep(1000);
 
   const chosen = pickOne(candidates);
+  if (chosen.mint.startsWith("DemoMint")) {
+    emitIdle();
+    return;
+  }
+
   const holderStats = hasBirdeyeApiKey() ? await getHolderStats(chosen.mint) : null;
   const plan = planHold(chosen, filters, holderStats);
 
@@ -77,19 +79,22 @@ async function runCycleBody(): Promise<void> {
   let txSell: string | undefined;
 
   if (DEMO_MODE) {
-    const holdMs =
-      DEMO_HOLD_MIN_MS +
-      Math.random() * (DEMO_HOLD_CAP_MS - DEMO_HOLD_MIN_MS);
+    const buyPriceUsd = await getTokenPriceUsd(chosen.mint);
+    const holdMinMs = Math.max(MIN_HOLD_MS, filters.holdMinSeconds * 1000);
+    const holdMaxMs = Math.min(filters.holdMaxSeconds * 1000, 10 * 60 * 1000);
+    const holdMs = Math.max(MIN_HOLD_MS, holdMinMs + Math.random() * (holdMaxMs - holdMinMs));
+    console.log("[Clawdbot] Holding for", Math.round(holdMs / 1000), "s before sell");
     await sleep(holdMs);
+    const sellPriceUsd = await getTokenPriceUsd(chosen.mint);
     const res = await executeSell(chosen.mint, tokenAmount, filters);
     txSell = res.tx;
-    const r = Math.random();
-    if (r < 0.4) {
-      solReceived = buySol * (1 + plan.takeProfitPercent / 100);
-    } else if (r < 0.65) {
-      solReceived = buySol * (1 + plan.stopLossPercent / 100);
+    if (buyPriceUsd != null && buyPriceUsd > 0 && sellPriceUsd != null) {
+      solReceived = buySol * (sellPriceUsd / buyPriceUsd);
     } else {
-      solReceived = buySol * (0.95 + Math.random() * 0.1);
+      const r = Math.random();
+      if (r < 0.4) solReceived = buySol * (1 + plan.takeProfitPercent / 100);
+      else if (r < 0.65) solReceived = buySol * (1 + plan.stopLossPercent / 100);
+      else solReceived = buySol * (0.95 + Math.random() * 0.1);
     }
     sellTimestamp = new Date().toISOString();
   } else {
@@ -97,12 +102,13 @@ async function runCycleBody(): Promise<void> {
     const start = Date.now();
     const tpMult = 1 + plan.takeProfitPercent / 100;
     const slMult = 1 + plan.stopLossPercent / 100;
+    const effectiveHoldMinMs = Math.max(plan.holdMinMs, MIN_HOLD_MS);
     let sold = false;
 
     while (Date.now() - start < plan.holdMaxMs) {
       await sleep(HOLD_POLL_MS);
       const elapsed = Date.now() - start;
-      if (elapsed < plan.holdMinMs) continue;
+      if (elapsed < effectiveHoldMinMs) continue;
 
       const priceUsd = await getTokenPriceUsd(chosen.mint);
       if (priceUsd != null && buyPriceUsd != null && buyPriceUsd > 0) {
@@ -132,6 +138,10 @@ async function runCycleBody(): Promise<void> {
       solReceived = res.solReceived;
       txSell = res.tx;
     }
+    if (solReceived === 0 && buyPriceUsd != null && buyPriceUsd > 0) {
+      const sellPriceUsd = await getTokenPriceUsd(chosen.mint);
+      if (sellPriceUsd != null) solReceived = buySol * (sellPriceUsd / buyPriceUsd);
+    }
   }
 
   if (!sellTimestamp) {
@@ -153,7 +163,8 @@ async function runCycleBody(): Promise<void> {
     tokenAmount,
     sellTimestamp,
     txBuy,
-    txSell
+    txSell,
+    chosen.mcapUsd
   );
 
   emitSold(chosen.mint, chosen.symbol, solReceived - buySol, txSell);
@@ -163,7 +174,8 @@ async function runCycleBody(): Promise<void> {
 async function main(): Promise<void> {
   console.log("[Clawdbot] Data dir:", getDataDir());
   console.log("[Clawdbot] Demo mode:", DEMO_MODE);
-  console.log("[Clawdbot] Filters:", JSON.stringify(filters, null, 2));
+  console.log("[Clawdbot] Filters:", JSON.stringify(loadFilters(), null, 2));
+  console.log("[Clawdbot] One position at a time. Loop delay: 3 min after each sell. Min hold: 2 min.");
 
   setState({
     kind: "idle",

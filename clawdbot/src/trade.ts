@@ -116,7 +116,8 @@ export function recordTrade(
   sellTokenAmount: number,
   sellTimestamp: string,
   txBuy?: string,
-  txSell?: string
+  txSell?: string,
+  mcapUsd?: number
 ): TradeRecord {
   const holdSeconds = Math.round(
     (new Date(sellTimestamp).getTime() - new Date(buyTimestamp).getTime()) / 1000
@@ -128,6 +129,7 @@ export function recordTrade(
     symbol,
     name,
     why,
+    mcapUsd,
     buySol,
     buyTokenAmount,
     buyTimestamp,
