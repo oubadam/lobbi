@@ -28,6 +28,7 @@ function pickOne<T>(arr: T[]): T {
 
 async function runCycle(): Promise<void> {
   if (!tryAcquireCycleLock()) {
+    console.log("[Clawdbot] Another instance holds the lock or a cycle is running. Skipping. Only run one bot.");
     return;
   }
   try {
@@ -80,11 +81,17 @@ async function runCycleBody(): Promise<void> {
 
   if (DEMO_MODE) {
     const buyPriceUsd = await getTokenPriceUsd(chosen.mint);
-    const holdMinMs = Math.max(MIN_HOLD_MS, filters.holdMinSeconds * 1000);
-    const holdMaxMs = Math.min(filters.holdMaxSeconds * 1000, 10 * 60 * 1000);
-    const holdMs = Math.max(MIN_HOLD_MS, holdMinMs + Math.random() * (holdMaxMs - holdMinMs));
-    console.log("[Clawdbot] Holding for", Math.round(holdMs / 1000), "s before sell");
-    await sleep(holdMs);
+    console.log("[Clawdbot] Holding position for at least 2 min (enforced)...");
+    await sleep(MIN_HOLD_MS);
+    const extraMs = Math.min(
+      Math.max(0, (filters.holdMaxSeconds - filters.holdMinSeconds) * 1000),
+      8 * 60 * 1000
+    );
+    if (extraMs > 0) {
+      const extra = Math.floor(extraMs * Math.random());
+      console.log("[Clawdbot] Extra hold", Math.round(extra / 1000), "s");
+      await sleep(extra);
+    }
     const sellPriceUsd = await getTokenPriceUsd(chosen.mint);
     const res = await executeSell(chosen.mint, tokenAmount, filters);
     txSell = res.tx;
@@ -168,7 +175,9 @@ async function runCycleBody(): Promise<void> {
   );
 
   emitSold(chosen.mint, chosen.symbol, solReceived - buySol, txSell);
-  await sleep(3000);
+  await sleep(2000);
+  console.log("[Clawdbot] Waiting 3 min before next buy (lock held — one position at a time).");
+  await sleep(LOOP_DELAY_MS);
 }
 
 async function main(): Promise<void> {
@@ -188,8 +197,8 @@ async function main(): Promise<void> {
     } catch (e) {
       console.error("[Clawdbot] Cycle error:", e);
       emitIdle();
+      releaseCycleLock();
     }
-    await sleep(LOOP_DELAY_MS);
   }
 }
 
