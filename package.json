@@ -1,0 +1,17 @@
+{
+  "name": "lobbi",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:web\" \"npm run dev:bot\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:web": "cd web && npm run dev",
+    "dev:bot": "cd clawdbot && npm run dev",
+    "build": "npm run build --prefix clawdbot && npm run build --prefix backend && npm run build --prefix web",
+    "start": "node backend/dist/index.js",
+    "bot": "node clawdbot/dist/index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

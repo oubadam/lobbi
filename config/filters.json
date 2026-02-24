@@ -1,0 +1,16 @@
+{
+  "minVolumeUsd": 5000,
+  "minMcapUsd": 5000,
+  "maxMcapUsd": 31400,
+  "minGlobalFeesPaidSol": 0.8,
+  "maxAgeMinutes": 120,
+  "maxPositionSol": 0.1,
+  "maxPositionPercent": 10,
+  "maxCandidates": 3,
+  "holdMinSeconds": 60,
+  "holdMaxSeconds": 600,
+  "takeProfitPercent": 50,
+  "stopLossPercent": -25,
+  "slippagePercent": 15,
+  "priorityFeeSol": 0.0001
+}

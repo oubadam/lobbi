@@ -1,0 +1,330 @@
+:root {
+  --bg: #0d0d0d;
+  --panel: #1a1a1a;
+  --border: #333;
+  --text: #e6e6e6;
+  --muted: #888;
+  --accent: #ff6b35;
+  --lobbi-orange: #ff8c42;
+  --green: #4ade80;
+  --red: #f87171;
+  --pixel-font: "Press Start 2P", cursive;
+  --ascii-font: "VT323", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ascii-font);
+  font-size: 18px;
+  line-height: 1.4;
+  min-height: 100vh;
+}
+
+h1, h2, .pixel {
+  font-family: var(--pixel-font);
+}
+
+h1 { font-size: 1.2rem; }
+h2 { font-size: 0.9rem; color: var(--lobbi-orange); }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+.app {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* ASCII panel */
+.panel {
+  background: var(--panel);
+  border: 3px solid var(--border);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.panel-title {
+  font-family: var(--pixel-font);
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+/* Lobbi scene */
+.lobbi-scene {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+  padding: 20px;
+}
+
+.screens-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.ascii-screen {
+  flex: 1;
+  min-width: 140px;
+  max-width: 200px;
+}
+
+.screen-frame {
+  background: var(--bg);
+  border: 3px solid var(--border);
+  border-radius: 0;
+  padding: 8px;
+  min-height: 100px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ascii-screen.selected .screen-frame {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(255, 107, 53, 0.4);
+}
+
+.ascii-screen.empty .screen-frame {
+  opacity: 0.6;
+}
+
+.screen-title {
+  font-family: var(--pixel-font);
+  font-size: 0.5rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.screen-content {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.screen-symbol {
+  font-family: var(--pixel-font);
+  color: var(--lobbi-orange);
+  font-size: 0.65rem;
+  margin-bottom: 2px;
+}
+
+.screen-name {
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+  word-break: break-word;
+}
+
+.screen-mint {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.screen-reason {
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.screen-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.lobbi-walk-container {
+  position: absolute;
+  bottom: 80px;
+  transform: translateX(-50%);
+  transition: left 0.5s ease-out;
+  z-index: 2;
+}
+
+.lobbi-sprite {
+  width: 100px;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transition: transform 0.2s ease;
+}
+
+.lobbi-sprite.thinking {
+  animation: bob 1s ease-in-out infinite;
+}
+
+.lobbi-sprite.choosing {
+  animation: wiggle 0.5s ease-in-out infinite;
+}
+
+.lobbi-sprite.bought {
+  animation: hop 0.4s ease-out;
+}
+
+.lobbi-sprite.sold {
+  animation: hop 0.4s ease-out;
+}
+
+.lobbi-sprite.selected {
+  animation: select-pop 0.5s ease-out;
+}
+
+@keyframes select-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes hop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.lobbi-message {
+  font-family: var(--pixel-font);
+  font-size: 0.6rem;
+  color: var(--lobbi-orange);
+  margin-top: 12px;
+  text-align: center;
+  min-height: 2.5em;
+}
+
+.thought-bubble {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: var(--panel);
+  border: 2px solid var(--border);
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  max-width: 200px;
+}
+.thought-bubble::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  border: 6px solid transparent;
+  border-right-color: var(--border);
+  margin-top: -6px;
+}
+
+.blink {
+  animation: blink 0.8s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Candidate coins */
+.candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.candidate-coin {
+  background: var(--bg);
+  border: 2px solid var(--border);
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  cursor: default;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.candidate-coin.chosen {
+  border-color: var(--accent);
+  background: rgba(255, 107, 53, 0.15);
+  color: var(--accent);
+}
+
+/* Trade feed */
+.trade-feed {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.trade-item {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+  font-size: 0.95rem;
+}
+
+.trade-item:last-child { border-bottom: none; }
+
+.trade-symbol { color: var(--lobbi-orange); font-weight: bold; }
+.trade-mint { font-size: 0.85rem; color: var(--muted); word-break: break-all; }
+.trade-why { color: var(--muted); margin: 4px 0; }
+.trade-pnl.positive { color: var(--green); }
+.trade-pnl.negative { color: var(--red); }
+
+/* Balance & PnL */
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.stat-box {
+  flex: 1;
+  min-width: 140px;
+}
+
+.stat-value {
+  font-family: var(--pixel-font);
+  font-size: 0.8rem;
+  color: var(--lobbi-orange);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.header img {
+  width: 48px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.header h1 { margin: 0; }
+
+/* Scrollbar */
+.trade-feed::-webkit-scrollbar { width: 8px; }
+.trade-feed::-webkit-scrollbar-track { background: var(--bg); }
+.trade-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
