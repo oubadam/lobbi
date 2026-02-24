@@ -104,6 +104,39 @@ export async function executeSell(
   return { solReceived, tx: sig };
 }
 
+/** Record a buy immediately so the trade feed shows the BUY when Live Claw does. */
+export function recordOpenBuy(
+  symbol: string,
+  name: string,
+  mint: string,
+  why: string,
+  buySol: number,
+  buyTokenAmount: number,
+  buyTimestamp: string,
+  txBuy?: string,
+  mcapUsd?: number
+): TradeRecord {
+  const record: TradeRecord = {
+    id: genId(),
+    mint,
+    symbol,
+    name,
+    why,
+    mcapUsd,
+    buySol,
+    buyTokenAmount,
+    buyTimestamp,
+    sellSol: 0,
+    sellTokenAmount: buyTokenAmount,
+    sellTimestamp: "",
+    holdSeconds: 0,
+    pnlSol: 0,
+    txBuy,
+  };
+  appendTrade(record);
+  return record;
+}
+
 export function recordTrade(
   symbol: string,
   name: string,
@@ -117,7 +150,8 @@ export function recordTrade(
   sellTimestamp: string,
   txBuy?: string,
   txSell?: string,
-  mcapUsd?: number
+  mcapUsd?: number,
+  mcapAtSellUsd?: number
 ): TradeRecord {
   const holdSeconds = Math.round(
     (new Date(sellTimestamp).getTime() - new Date(buyTimestamp).getTime()) / 1000
@@ -130,6 +164,7 @@ export function recordTrade(
     name,
     why,
     mcapUsd,
+    mcapAtSellUsd,
     buySol,
     buyTokenAmount,
     buyTimestamp,

@@ -10,7 +10,7 @@ const PORT = Number(process.env.PORT) || 4000;
 
 // In demo mode we don't have a wallet; use mock balance that increases with PnL
 function getBalance(): number {
-  const trades = realTradesOnly(getTrades());
+  const trades = realTradesOnly(getTrades()).filter((t) => t.sellTimestamp);
   const totalPnl = trades.reduce((s, t) => s + t.pnlSol, 0);
   return 1 + totalPnl; // start 1 SOL + PnL
 }
@@ -36,7 +36,7 @@ app.get("/api/balance", (_req, res) => {
 });
 
 app.get("/api/pnl", (_req, res) => {
-  const trades = realTradesOnly(getTrades());
+  const trades = realTradesOnly(getTrades()).filter((t) => t.sellTimestamp);
   const totalPnlSol = trades.reduce((s, t) => s + t.pnlSol, 0);
   res.json({ totalPnlSol, tradeCount: trades.length });
 });

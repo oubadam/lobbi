@@ -42,6 +42,7 @@ export interface TradeRecord {
   name: string;
   why: string;
   mcapUsd?: number;
+  mcapAtSellUsd?: number;
   buySol: number;
   buyTokenAmount: number;
   buyTimestamp: string;
@@ -64,4 +65,6 @@ export interface LobbiState {
   chosenMint?: string;
   chosenSymbol?: string;
   lastTx?: string;
+  chosenMcapUsd?: number;
+  chosenHolderCount?: number;
 }

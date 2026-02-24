@@ -25,7 +25,7 @@ No Solana keys or RPC needed. The bot runs in **demo mode** and generates fake t
    npm run dev
    ```
 
-   This runs the API at **http://localhost:4000** and the site at **http://localhost:5173**.
+   This runs the API at **http://localhost:4000** and the site at **http://localhost:5173**. **Open the app at http://localhost:5173** (or http://localhost:5174 / 5175 if Vite picks another port when 5173 is in use).
 
 3. **Start the bot** (in another terminal, or run everything at once):
 
@@ -57,11 +57,11 @@ lobbi/
 
 ## Configuration
 
-- **Bot filters** — Edit `config/filters.json`:
+- **Bot filters (all enforced)** — Edit `config/filters.json`. Every filter is enforced; no relaxation of max age or max mcap:
   - `minVolumeUsd`, `minMcapUsd` — min 24h volume and market cap (USD)
-  - `maxMcapUsd`: **31400** — max market cap $31.4k (~410 SOL at ~$76.6/SOL). Only tokens at or below this mcap are considered.
+  - `maxMcapUsd`: **31400** — max market cap $31.4k. Only tokens at or below this are considered.
+  - `maxAgeMinutes`: **60** — max token age (1 hour). Coins older than this are never selected.
   - `minGlobalFeesPaidSol`: 0.8 — min global fees paid on bonding curve (SOL); applied when data is available
-  - `maxAgeMinutes` — max token age (e.g. 120 = 2 hours)
   - `maxCandidates`: 3 — coins shown on the 3 screens
   - `holdMinSeconds`, `holdMaxSeconds` — base hold window; actual hold is decided by **coin analysis** (volume/mcap, liquidity).
   - `takeProfitPercent`, `stopLossPercent` — targets; analysis can tighten or relax them by coin quality.

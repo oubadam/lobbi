@@ -82,7 +82,7 @@ export default function App() {
 
       <section className="claw-section" aria-label="Live claw">
         <h2 className="section-label">Live claw</h2>
-        <p className="section-desc">Bot picks one coin, holds at least 2 min, then sells. Waits 3 min before next buy.</p>
+        <p className="section-desc">Bot selects one coin (filters: ≤1h old, mcap $18k–$31.4k, min vol, 2 min hold, 3 min between). Then sells and selects the next.</p>
         <LobbiScene state={state} />
       </section>
 

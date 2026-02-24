@@ -32,7 +32,9 @@ export function TradeFeed({ trades }: Props) {
     const list: FeedEvent[] = [];
     for (const t of trades) {
       list.push({ type: "buy", trade: t, timestamp: t.buyTimestamp });
-      list.push({ type: "sell", trade: t, timestamp: t.sellTimestamp });
+      if (t.sellTimestamp) {
+        list.push({ type: "sell", trade: t, timestamp: t.sellTimestamp });
+      }
     }
     list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return list;
@@ -60,8 +62,11 @@ export function TradeFeed({ trades }: Props) {
             <div className="trade-feed-row-badge">{ev.type === "buy" ? "BUY" : "SELL"}</div>
             <div className="trade-feed-row-main">
               <span className="trade-symbol">{ev.trade.symbol}</span>
-              {ev.trade.mcapUsd != null && (
-                <span className="trade-feed-row-mcap"> · Mcap ${(ev.trade.mcapUsd / 1000).toFixed(1)}k</span>
+              {ev.type === "buy" && ev.trade.mcapUsd != null && (
+                <span className="trade-feed-row-mcap"> · Mcap @ buy ${(ev.trade.mcapUsd / 1000).toFixed(1)}k</span>
+              )}
+              {ev.type === "sell" && ev.trade.mcapAtSellUsd != null && (
+                <span className="trade-feed-row-mcap"> · Mcap @ sell ${(ev.trade.mcapAtSellUsd / 1000).toFixed(1)}k</span>
               )}
               <span className="trade-feed-row-sep"> · </span>
               {ev.type === "buy" ? (

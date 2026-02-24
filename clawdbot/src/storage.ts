@@ -42,15 +42,48 @@ export function getTrades(): TradeRecord[] {
   return tradesCache;
 }
 
-/** Mints we bought in the last N trades (to avoid re-buying same coin). */
+/** Mints we bought in the last N closed trades (to avoid re-buying same coin). */
 export function getRecentMints(lastN: number): string[] {
   const trades = loadTrades();
-  return trades.slice(0, lastN).map((t) => t.mint);
+  const closed = trades.filter((t) => t.sellTimestamp && t.sellTimestamp !== "");
+  return closed.slice(0, lastN).map((t) => t.mint);
 }
 
 export function appendTrade(t: TradeRecord): void {
   const all = loadTrades();
   all.unshift(t);
+  writeFileSync(dataPath(TRADES_FILE), JSON.stringify(all, null, 2));
+  tradesCache = all;
+}
+
+/** Remove any open (unclosed) trades so we never have more than one. Call before recording a new buy. */
+export function clearStaleOpenTrades(): void {
+  const all = loadTrades();
+  const closedOnly = all.filter((t) => t.sellTimestamp && t.sellTimestamp !== "");
+  if (closedOnly.length === all.length) return;
+  writeFileSync(dataPath(TRADES_FILE), JSON.stringify(closedOnly, null, 2));
+  tradesCache = closedOnly;
+}
+
+/** Update the current open position (first trade with no sell) with sell data. Only one open at a time. */
+export function updateOpenTradeToSold(
+  sellSol: number,
+  sellTokenAmount: number,
+  sellTimestamp: string,
+  txSell?: string,
+  mcapAtSellUsd?: number
+): void {
+  const all = loadTrades();
+  const idx = all.findIndex((t) => !t.sellTimestamp || t.sellTimestamp === "");
+  if (idx === -1) return;
+  const t = all[idx]!;
+  t.sellSol = sellSol;
+  t.sellTokenAmount = sellTokenAmount;
+  t.sellTimestamp = sellTimestamp;
+  t.txSell = txSell;
+  t.mcapAtSellUsd = mcapAtSellUsd;
+  t.holdSeconds = Math.round((new Date(sellTimestamp).getTime() - new Date(t.buyTimestamp).getTime()) / 1000);
+  t.pnlSol = sellSol - t.buySol;
   writeFileSync(dataPath(TRADES_FILE), JSON.stringify(all, null, 2));
   tradesCache = all;
 }

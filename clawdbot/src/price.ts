@@ -4,6 +4,8 @@ interface Pair {
   baseToken?: { address: string };
   priceUsd?: string;
   priceNative?: string;
+  fdv?: number;
+  marketCap?: number;
 }
 
 /**
@@ -18,6 +20,22 @@ export async function getTokenPriceUsd(mint: string): Promise<number | null> {
     const p = pairs[0];
     if (!p?.priceUsd) return null;
     return parseFloat(p.priceUsd);
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch current token mcap (FDV) in USD from DexScreener. */
+export async function getTokenMcapUsd(mint: string): Promise<number | null> {
+  try {
+    const res = await fetch(`${DEXSCREENER}/token-pairs/v1/solana/${mint}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { pairs?: Pair[] };
+    const pairs = data?.pairs ?? [];
+    const p = pairs[0];
+    const mcap = p?.fdv ?? p?.marketCap;
+    if (mcap == null) return null;
+    return typeof mcap === "number" ? mcap : parseFloat(String(mcap));
   } catch {
     return null;
   }

@@ -70,6 +70,20 @@ a:hover { text-decoration: underline; }
 }
 
 /* Lobbi scene */
+.lobbi-status-bar {
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.lobbi-status {
+  color: var(--muted);
+}
+
+.lobbi-status-position {
+  color: var(--lobbi-orange);
+  font-weight: 600;
+}
+
 .lobbi-scene {
   min-height: 320px;
   display: flex;
@@ -111,6 +125,12 @@ a:hover { text-decoration: underline; }
   font-size: 0.8rem;
   color: var(--muted);
   margin-top: 4px;
+}
+
+.screen-metrics {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 6px;
 }
 
 .ascii-screen {

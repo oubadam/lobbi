@@ -136,23 +136,25 @@ export async function discoverCandidates(
     }
   }
 
+  const maxAgeMs = filters.maxAgeMinutes * 60 * 1000;
+
   const strict = {
     minVol: filters.minVolumeUsd,
     minMcap: filters.minMcapUsd,
     maxMcap,
-    maxAgeMs: filters.maxAgeMinutes * 60 * 1000,
+    maxAgeMs,
   };
-  const relaxedAge = {
-    minVol: filters.minVolumeUsd,
-    minMcap: filters.minMcapUsd,
+  const relaxedVolMcapOnly = {
+    minVol: Math.min(5000, filters.minVolumeUsd),
+    minMcap: Math.min(5000, filters.minMcapUsd),
     maxMcap,
-    maxAgeMs: 24 * 60 * 60 * 1000,
+    maxAgeMs,
   };
   const relaxedAll = {
     minVol: Math.min(3000, filters.minVolumeUsd),
     minMcap: Math.min(3000, filters.minMcapUsd),
     maxMcap,
-    maxAgeMs: 7 * 24 * 60 * 60 * 1000,
+    maxAgeMs,
   };
 
   const queries = ["pumpswap", "pump", "pumpfun", "memecoin", "sol", "pepe", "doge", "wojak", "based", "trending"];
@@ -176,7 +178,7 @@ export async function discoverCandidates(
         const res = await fetch(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
         if (!res.ok) continue;
         const data = (await res.json()) as { pairs?: DexPair[] };
-        collectFromPairs(parsePairs(data), relaxedAge, true, seen, candidates, now, poolSize, exclude);
+        collectFromPairs(parsePairs(data), relaxedVolMcapOnly, true, seen, candidates, now, poolSize, exclude);
         if (candidates.length >= poolSize) break;
       } catch {
         /* ignore */
@@ -212,7 +214,18 @@ export async function discoverCandidates(
     }
   }
 
-  const realOnly = candidates.filter((c) => !c.mint.startsWith("DemoMint"));
+  const maxAgeMsEnforce = filters.maxAgeMinutes * 60 * 1000;
+  const nowMs = Date.now();
+  const realOnly = candidates
+    .filter((c) => !c.mint.startsWith("DemoMint"))
+    .filter((c) => {
+      if (c.mcapUsd != null && (c.mcapUsd < filters.minMcapUsd || c.mcapUsd > maxMcap)) return false;
+      if (c.volumeUsd != null && c.volumeUsd < filters.minVolumeUsd) return false;
+      // Enforce max age: only allow coins with known creation time and age <= maxAgeMinutes
+      if (c.pairCreatedAt == null) return false;
+      if (nowMs - c.pairCreatedAt > maxAgeMsEnforce) return false;
+      return true;
+    });
   if (realOnly.length === 0) {
     return [];
   }

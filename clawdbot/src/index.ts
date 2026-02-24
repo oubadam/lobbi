@@ -1,9 +1,9 @@
 import { loadFilters, getDataDir, DEMO_MODE } from "./config.js";
-import { setState, getRecentMints, tryAcquireCycleLock, releaseCycleLock } from "./storage.js";
+import { setState, getRecentMints, tryAcquireCycleLock, releaseCycleLock, updateOpenTradeToSold, clearStaleOpenTrades } from "./storage.js";
 import { discoverCandidates } from "./discovery.js";
-import { executeBuy, executeSell, recordTrade } from "./trade.js";
+import { executeBuy, executeSell, recordOpenBuy } from "./trade.js";
 import { planHold } from "./analysis.js";
-import { getTokenPriceUsd } from "./price.js";
+import { getTokenPriceUsd, getTokenMcapUsd } from "./price.js";
 import { getHolderStats, hasBirdeyeApiKey } from "./birdeye.js";
 import {
   emitIdle,
@@ -65,6 +65,23 @@ async function runCycleBody(): Promise<void> {
     return;
   }
 
+  const maxAgeMs = filters.maxAgeMinutes * 60 * 1000;
+  if (chosen.mcapUsd != null && (chosen.mcapUsd < filters.minMcapUsd || chosen.mcapUsd > (filters.maxMcapUsd ?? 31400))) {
+    console.warn("[Clawdbot] Chosen coin mcap out of range, skipping");
+    emitIdle();
+    return;
+  }
+  if (chosen.volumeUsd != null && chosen.volumeUsd < filters.minVolumeUsd) {
+    console.warn("[Clawdbot] Chosen coin volume below min, skipping");
+    emitIdle();
+    return;
+  }
+  if (chosen.pairCreatedAt != null && Date.now() - chosen.pairCreatedAt > maxAgeMs) {
+    console.warn("[Clawdbot] Chosen coin too old, skipping");
+    emitIdle();
+    return;
+  }
+
   const holderStats = hasBirdeyeApiKey() ? await getHolderStats(chosen.mint) : null;
   const plan = planHold(chosen, filters, holderStats);
 
@@ -72,7 +89,20 @@ async function runCycleBody(): Promise<void> {
   const { tokenAmount, tx: txBuy } = await executeBuy(chosen, buySol, filters);
   const buyTimestamp = new Date().toISOString();
 
-  emitBought(chosen.mint, chosen.symbol, txBuy);
+  clearStaleOpenTrades();
+  recordOpenBuy(
+    chosen.symbol,
+    chosen.name,
+    chosen.mint,
+    chosen.reason + " | hold: " + plan.reason,
+    buySol,
+    tokenAmount,
+    buyTimestamp,
+    txBuy,
+    chosen.mcapUsd
+  );
+  const holderCount = holderStats?.holderCount;
+  emitBought(chosen.mint, chosen.symbol, txBuy, chosen.mcapUsd ?? undefined, holderCount);
   await sleep(2000);
 
   let sellTimestamp = "";
@@ -158,24 +188,19 @@ async function runCycleBody(): Promise<void> {
     txSell = res.tx;
   }
 
-  recordTrade(
-    chosen.symbol,
-    chosen.name,
-    chosen.mint,
-    chosen.reason + " | hold: " + plan.reason,
-    buySol,
-    tokenAmount,
-    buyTimestamp,
+  const mcapAtSellUsd = await getTokenMcapUsd(chosen.mint);
+
+  updateOpenTradeToSold(
     solReceived,
     tokenAmount,
     sellTimestamp,
-    txBuy,
     txSell,
-    chosen.mcapUsd
+    mcapAtSellUsd ?? undefined
   );
 
   emitSold(chosen.mint, chosen.symbol, solReceived - buySol, txSell);
-  await sleep(2000);
+  await sleep(1000);
+  emitIdle();
   console.log("[Clawdbot] Waiting 3 min before next buy (lock held — one position at a time).");
   await sleep(LOOP_DELAY_MS);
 }

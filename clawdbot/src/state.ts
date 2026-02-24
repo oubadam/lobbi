@@ -26,7 +26,13 @@ export function emitChoosing(candidates: CandidateCoin[]): void {
   });
 }
 
-export function emitBought(mint: string, symbol: string, tx?: string): void {
+export function emitBought(
+  mint: string,
+  symbol: string,
+  tx?: string,
+  mcapUsd?: number,
+  holderCount?: number
+): void {
   emitState({
     kind: "bought",
     at: new Date().toISOString(),
@@ -34,6 +40,8 @@ export function emitBought(mint: string, symbol: string, tx?: string): void {
     chosenMint: mint,
     chosenSymbol: symbol,
     lastTx: tx,
+    chosenMcapUsd: mcapUsd,
+    chosenHolderCount: holderCount,
   });
 }
 

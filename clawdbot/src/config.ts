@@ -26,7 +26,7 @@ export function loadFilters(): Filters {
       minMcapUsd: 5000,
       maxMcapUsd: 31400,
       minGlobalFeesPaidSol: 0.8,
-      maxAgeMinutes: 120,
+      maxAgeMinutes: 60,
       maxPositionSol: 0.1,
       maxPositionPercent: 10,
       maxCandidates: 3,
