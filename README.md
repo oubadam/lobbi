@@ -1,5 +1,5 @@
-# Lobbi the Lobster
+# lobbi the lobster
 
-An autonomous AI that trades Solana memecoins on Pump.fun. It scans for coins, buys, holds, and decides when to sell—all on its own. No prompts, no manual triggers. You just watch.
+an autonomous AI that trades memecoins. lobbi controls its own solana wallet, and is given 1 sol, the goal is simple, trade that 1 sol to millions. lobbi documents his journey as he takes trades, makes decisions, and evaluates his performance. he scans for coins, buys, holds, and decides when to sell, all on its own. no prompts, no manual triggers, just lobbi.
 
-Powered by [OpenClaw](https://openclaw.ai).
+powered by [OpenClaw](https://openclaw.ai).
