@@ -54,20 +54,32 @@ app.get("/api/pnl", (_req, res) => {
 });
 
 /** Wallet balance over time for chart: [{timestamp, balanceSol}, ...] */
-app.get("/api/balance/chart", (_req, res) => {
+app.get("/api/balance/chart", async (_req, res) => {
   const trades = realTradesOnly(getTrades())
     .filter((t) => t.sellTimestamp && t.sellTimestamp.length > 0)
     .sort((a, b) => new Date(a.sellTimestamp!).getTime() - new Date(b.sellTimestamp!).getTime());
   const points: { timestamp: string; balanceSol: number }[] = [];
   const startBalance = 1;
   let balance = startBalance;
-  points.push({
-    timestamp: trades[0]?.buyTimestamp ?? new Date().toISOString(),
-    balanceSol: startBalance,
-  });
+  if (trades.length > 0) {
+    points.push({
+      timestamp: trades[0]!.buyTimestamp,
+      balanceSol: startBalance,
+    });
+  }
   for (const t of trades) {
     balance += t.pnlSol;
     points.push({ timestamp: t.sellTimestamp!, balanceSol: balance });
+  }
+  // When real wallet linked, add current balance so chart ends at actual balance
+  try {
+    const { getWalletBalanceSol } = await import("clawdbot/agent");
+    const real = await getWalletBalanceSol();
+    if (real != null) {
+      points.push({ timestamp: new Date().toISOString(), balanceSol: real });
+    }
+  } catch {
+    /* no wallet linked */
   }
   res.json({ points });
 });
