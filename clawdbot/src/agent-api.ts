@@ -184,4 +184,4 @@ export async function sell(): Promise<
   }
 }
 
-export { getWalletBalanceSol } from "./trade.js";
+export { getWalletBalanceSol, getWalletBalanceWithError } from "./trade.js";

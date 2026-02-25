@@ -7,15 +7,23 @@ const LAMPORTS_PER_SOL = 1e9;
 
 /** Get current wallet SOL balance (for accurate PnL when wallet is linked). Returns null if no wallet/RPC. */
 export async function getWalletBalanceSol(): Promise<number | null> {
+  const r = await getWalletBalanceWithError();
+  return r.balance;
+}
+
+/** Same as getWalletBalanceSol but returns the actual error for debugging. */
+export async function getWalletBalanceWithError(): Promise<{ balance: number | null; error?: string }> {
   const keypair = loadKeypair();
-  const rpc = process.env.SOLANA_RPC_URL;
-  if (!keypair || !rpc) return null;
+  const rpc = process.env.SOLANA_RPC_URL?.trim();
+  if (!keypair) return { balance: null, error: "No keypair (WALLET_PRIVATE_KEY invalid or missing)" };
+  if (!rpc) return { balance: null, error: "SOLANA_RPC_URL not set" };
   try {
     const conn = new Connection(rpc);
     const lamports = await conn.getBalance(keypair.publicKey);
-    return lamports / LAMPORTS_PER_SOL;
-  } catch {
-    return null;
+    return { balance: lamports / LAMPORTS_PER_SOL };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { balance: null, error: msg };
   }
 }
 

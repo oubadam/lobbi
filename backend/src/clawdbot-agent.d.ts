@@ -27,6 +27,7 @@ declare module "clawdbot/agent" {
     | { ok: false; error: string }
   >;
   export function getWalletBalanceSol(): Promise<number | null>;
+  export function getWalletBalanceWithError(): Promise<{ balance: number | null; error?: string }>;
 }
 
 declare module "clawdbot" {

@@ -107,8 +107,8 @@ app.get("/api/filters", (_req, res) => {
 /** Debug: wallet connection status (helps diagnose balance/trading issues) */
 app.get("/api/wallet-status", async (_req, res) => {
   try {
-    const { getWalletBalanceSol } = await import("clawdbot/agent");
-    const balance = await getWalletBalanceSol();
+    const { getWalletBalanceWithError } = await import("clawdbot/agent");
+    const { balance, error } = await getWalletBalanceWithError();
     const hasWallet = !!process.env.WALLET_PRIVATE_KEY?.trim();
     const hasRpc = !!process.env.SOLANA_RPC_URL?.trim();
     res.json({
@@ -116,12 +116,15 @@ app.get("/api/wallet-status", async (_req, res) => {
       balanceSol: balance ?? null,
       hasWallet,
       hasRpc,
+      error: error ?? undefined,
       hint: balance == null
-        ? !hasWallet
-          ? "Set WALLET_PRIVATE_KEY in .env (or Railway Variables)"
-          : !hasRpc
-            ? "Set SOLANA_RPC_URL in .env (or Railway Variables)"
-            : "RPC call failed—check SOLANA_RPC_URL and network"
+        ? error
+          ? error
+          : !hasWallet
+            ? "Set WALLET_PRIVATE_KEY in .env (or Railway Variables)"
+            : !hasRpc
+              ? "Set SOLANA_RPC_URL in .env (or Railway Variables)"
+              : "RPC call failed"
         : undefined,
     });
   } catch (e) {
@@ -130,7 +133,7 @@ app.get("/api/wallet-status", async (_req, res) => {
       balanceSol: null,
       hasWallet: !!process.env.WALLET_PRIVATE_KEY?.trim(),
       hasRpc: !!process.env.SOLANA_RPC_URL?.trim(),
-      hint: e instanceof Error ? e.message : String(e),
+      error: e instanceof Error ? e.message : String(e),
     });
   }
 });
