@@ -100,6 +100,37 @@ app.get("/api/filters", (_req, res) => {
   res.json(filters);
 });
 
+/** Debug: wallet connection status (helps diagnose balance/trading issues) */
+app.get("/api/wallet-status", async (_req, res) => {
+  try {
+    const { getWalletBalanceSol } = await import("clawdbot/agent");
+    const balance = await getWalletBalanceSol();
+    const hasWallet = !!process.env.WALLET_PRIVATE_KEY?.trim();
+    const hasRpc = !!process.env.SOLANA_RPC_URL?.trim();
+    res.json({
+      connected: balance != null,
+      balanceSol: balance ?? null,
+      hasWallet,
+      hasRpc,
+      hint: balance == null
+        ? !hasWallet
+          ? "Set WALLET_PRIVATE_KEY in .env (or Railway Variables)"
+          : !hasRpc
+            ? "Set SOLANA_RPC_URL in .env (or Railway Variables)"
+            : "RPC call failed—check SOLANA_RPC_URL and network"
+        : undefined,
+    });
+  } catch (e) {
+    res.json({
+      connected: false,
+      balanceSol: null,
+      hasWallet: !!process.env.WALLET_PRIVATE_KEY?.trim(),
+      hasRpc: !!process.env.SOLANA_RPC_URL?.trim(),
+      hint: e instanceof Error ? e.message : String(e),
+    });
+  }
+});
+
 const LOBBI_AGENT_BASE = process.env.LOBBI_AGENT_BASE_URL || "http://localhost:4000";
 
 app.get("/api/agent/candidates", async (_req, res) => {

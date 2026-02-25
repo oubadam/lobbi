@@ -2,6 +2,15 @@
  * Agent API: used by the backend when Lobbi (running on OpenClaw) drives trading.
  * One position at a time. Agent calls getCandidates → choose → buy(mint) → later sell().
  */
+import { config } from "dotenv";
+import { existsSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = join(__dirname, "..", "..");
+const envPath = [join(root, ".env"), join(process.cwd(), ".env")].find((p) => existsSync(p));
+if (envPath) config({ path: envPath });
+
 import type { CandidateCoin } from "./types.js";
 import { loadFilters, getLobbiOwnTokenMint } from "./config.js";
 import { discoverCandidates } from "./discovery.js";
