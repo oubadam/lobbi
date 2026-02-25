@@ -9,6 +9,8 @@ export interface Filters {
   maxCandidates: number;
   holdMinSeconds: number;
   holdMaxSeconds: number;
+  /** Delay in ms after sell before next buy (0 = no delay, trade immediately) */
+  loopDelayMs?: number;
   takeProfitPercent: number;
   stopLossPercent: number;
   slippagePercent: number;
@@ -38,6 +40,8 @@ export interface CandidateCoin {
   /** Social/url from metadata when available */
   twitter?: string;
   website?: string;
+  /** DexScreener or similar chart URL when available */
+  pairUrl?: string;
 }
 
 export interface TradeRecord {
@@ -46,8 +50,13 @@ export interface TradeRecord {
   symbol: string;
   name: string;
   why: string;
+  whySold?: string;
   mcapUsd?: number;
   mcapAtSellUsd?: number;
+  volumeAtBuyUsd?: number;
+  volumeAtSellUsd?: number;
+  ageMinutesAtBuy?: number;
+  ageMinutesAtSell?: number;
   buySol: number;
   buyTokenAmount: number;
   buyTimestamp: string;

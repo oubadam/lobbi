@@ -81,3 +81,61 @@ export function planHold(
     reason: reasons.length ? reasons.join(", ") : "default",
   };
 }
+
+/** Build a narrative "why" sentence for the trade feed. Includes token name, socials when available, community/movement. */
+export function buildNarrativeWhy(
+  coin: CandidateCoin,
+  plan: HoldPlan,
+  holderStats?: HolderStats | null,
+  ageMinutes?: number,
+  pairUrl?: string
+): string {
+  const parts: string[] = [];
+  const name = coin.name || coin.symbol || "Unknown";
+  const mcap = coin.mcapUsd ?? 0;
+  const vol = coin.volumeUsd ?? 0;
+
+  parts.push(`Bought ${name} ($${coin.symbol}) — `);
+
+  if (mcap > 0 && vol > 0) {
+    const velocity = vol / mcap;
+    if (velocity > 0.5) {
+      parts.push(`Strong volume ($${(vol / 1000).toFixed(1)}k) vs mcap ($${(mcap / 1000).toFixed(1)}k) suggests organic interest and healthy community movement.`);
+    } else if (velocity > 0.2) {
+      parts.push(`Solid volume ($${(vol / 1000).toFixed(1)}k) and mcap ($${(mcap / 1000).toFixed(1)}k) with decent velocity and trading activity.`);
+    } else {
+      parts.push(`Mcap $${(mcap / 1000).toFixed(1)}k, volume $${(vol / 1000).toFixed(1)}k.`);
+    }
+  } else if (mcap > 0) {
+    parts.push(`Mcap $${(mcap / 1000).toFixed(1)}k.`);
+  }
+
+  if (ageMinutes != null && ageMinutes < 60) {
+    parts.push(`Token is only ${ageMinutes}m old—early momentum play.`);
+  } else if (ageMinutes != null) {
+    parts.push(`Age ${ageMinutes}m.`);
+  }
+
+  if (coin.twitter || coin.website) {
+    const socials: string[] = [];
+    if (coin.twitter) socials.push(`Twitter: ${coin.twitter}`);
+    if (coin.website) socials.push(`Website: ${coin.website}`);
+    parts.push(`Socials linked: ${socials.join(", ")}.`);
+  }
+
+  if (holderStats) {
+    if (holderStats.isGoodHolders) {
+      parts.push(`Community looks healthy: ${holderStats.holderCount} holders, top 10 hold ${holderStats.top10PercentOfSupply.toFixed(0)}%—not concentrated.`);
+    } else {
+      parts.push(`Holders: ${holderStats.holderCount}, top 10 hold ${holderStats.top10PercentOfSupply.toFixed(0)}%.`);
+    }
+  }
+
+  if (pairUrl) {
+    parts.push(`Chart: ${pairUrl}`);
+  }
+
+  parts.push(` Exit decisions made by the agent based on live analysis of price, narrative, and community.`);
+
+  return parts.join(" ");
+}

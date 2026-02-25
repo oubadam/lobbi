@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:web\" \"npm run dev:bot\"",
+    "dev:all:clean": "./scripts/start-trading.sh",
     "dev:backend": "cd backend && env DATA_DIR=../data npm run dev",
     "dev:web": "cd web && npm run dev",
     "dev:bot": "cd clawdbot && env DATA_DIR=../data npm run dev",

@@ -63,8 +63,13 @@ export interface TradeRecord {
   symbol: string;
   name: string;
   why: string;
+  whySold?: string;
   mcapUsd?: number;
   mcapAtSellUsd?: number;
+  volumeAtBuyUsd?: number;
+  volumeAtSellUsd?: number;
+  ageMinutesAtBuy?: number;
+  ageMinutesAtSell?: number;
   buySol: number;
   buyTokenAmount: number;
   buyTimestamp: string;

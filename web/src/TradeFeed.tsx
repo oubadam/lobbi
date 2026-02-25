@@ -64,8 +64,20 @@ export function TradeFeed({ trades }: Props) {
                 {ev.type === "buy" && ev.trade.mcapUsd != null && (
                   <span className="trade-feed-row-mcap"> · Mcap @ buy ${(ev.trade.mcapUsd / 1000).toFixed(1)}k</span>
                 )}
+                {ev.type === "buy" && ev.trade.volumeAtBuyUsd != null && (
+                  <span> · Vol @ buy ${(ev.trade.volumeAtBuyUsd / 1000).toFixed(1)}k</span>
+                )}
+                {ev.type === "buy" && ev.trade.ageMinutesAtBuy != null && (
+                  <span> · {ev.trade.ageMinutesAtBuy}m old</span>
+                )}
                 {ev.type === "sell" && ev.trade.mcapAtSellUsd != null && (
                   <span className="trade-feed-row-mcap"> · Mcap @ sell ${(ev.trade.mcapAtSellUsd / 1000).toFixed(1)}k</span>
+                )}
+                {ev.type === "sell" && ev.trade.volumeAtSellUsd != null && (
+                  <span> · Vol @ sell ${(ev.trade.volumeAtSellUsd / 1000).toFixed(1)}k</span>
+                )}
+                {ev.type === "sell" && ev.trade.ageMinutesAtSell != null && (
+                  <span> · {ev.trade.ageMinutesAtSell}m old</span>
                 )}
                 <span className="trade-feed-row-sep"> · </span>
                 {ev.type === "buy" ? (
@@ -83,9 +95,14 @@ export function TradeFeed({ trades }: Props) {
                   </>
                 )}
               </div>
-              {ev.trade.why && (
+              {ev.type === "buy" && ev.trade.why && (
                 <div className="trade-feed-row-why" title={ev.trade.why}>
-                  Why: {ev.trade.why}
+                  Why bought: {ev.trade.why}
+                </div>
+              )}
+              {ev.type === "sell" && ev.trade.whySold && (
+                <div className="trade-feed-row-why" title={ev.trade.whySold}>
+                  Why sold: {ev.trade.whySold}
                 </div>
               )}
             </div>

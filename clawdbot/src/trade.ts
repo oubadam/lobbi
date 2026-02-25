@@ -129,7 +129,9 @@ export function recordOpenBuy(
   buyTokenAmount: number,
   buyTimestamp: string,
   txBuy?: string,
-  mcapUsd?: number
+  mcapUsd?: number,
+  volumeAtBuyUsd?: number,
+  ageMinutesAtBuy?: number
 ): TradeRecord {
   const record: TradeRecord = {
     id: genId(),
@@ -138,6 +140,8 @@ export function recordOpenBuy(
     name,
     why,
     mcapUsd,
+    volumeAtBuyUsd,
+    ageMinutesAtBuy,
     buySol,
     buyTokenAmount,
     buyTimestamp,

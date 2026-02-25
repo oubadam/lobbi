@@ -76,7 +76,9 @@ export function updateOpenTradeToSold(
   sellTokenAmount: number,
   sellTimestamp: string,
   txSell?: string,
-  mcapAtSellUsd?: number
+  mcapAtSellUsd?: number,
+  whySold?: string,
+  volumeAtSellUsd?: number
 ): void {
   const all = loadTrades();
   const idx = all.findIndex((t) => !t.sellTimestamp || t.sellTimestamp === "");
@@ -87,7 +89,10 @@ export function updateOpenTradeToSold(
   t.sellTimestamp = sellTimestamp;
   t.txSell = txSell;
   t.mcapAtSellUsd = mcapAtSellUsd;
+  if (whySold != null) t.whySold = whySold;
+  if (volumeAtSellUsd != null) t.volumeAtSellUsd = volumeAtSellUsd;
   t.holdSeconds = Math.round((new Date(sellTimestamp).getTime() - new Date(t.buyTimestamp).getTime()) / 1000);
+  if (t.ageMinutesAtBuy != null) t.ageMinutesAtSell = t.ageMinutesAtBuy + Math.round(t.holdSeconds / 60);
   t.pnlSol = sellSol - t.buySol;
   writeFileSync(dataPath(TRADES_FILE), JSON.stringify(all, null, 2));
   tradesCache = all;

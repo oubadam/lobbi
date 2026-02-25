@@ -48,7 +48,7 @@ The **OpenClaw** AI agent ([openclaw.ai](https://openclaw.ai)) drives LOBBI trad
 1. **Requirement:** Node >= 22.12.0. Run `./scripts/setup-openclaw-lobbi.sh`.
 2. **First-time:** `openclaw onboard --install-daemon` (needs Anthropic/OpenAI key).
 3. **Terminal 1 — Backend:** `cd lobbi && DATA_DIR=./data node backend/dist/index.js`
-4. **Terminal 2 — OpenClaw gateway:** `openclaw gateway --port 18789`
+4. **Terminal 2 — OpenClaw gateway:** `openclaw gateway --port 18789` (or `--allow-unconfigured` if you haven't run `openclaw onboard`)
 5. **Terminal 3 — Chat:** `openclaw dashboard` — ask "What can LOBBI buy?", "Buy a LOBBI coin", "Sell LOBBI position"
 6. **Optional — Web UI:** `npm run dev:web` to watch trades at http://localhost:5173
 

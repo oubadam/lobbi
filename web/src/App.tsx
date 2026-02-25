@@ -128,8 +128,6 @@ export default function App() {
 
       <footer className="footer">
         Lobbi memecoin · Clawdbot trades Solana memecoins · Creator rewards fund the claw
-        <br />
-        <span className="footer-note">Want <a href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer">OpenClaw</a> to drive trading? Install the skill from <code>openclaw-skill/</code>, run backend only, and use OpenClaw to buy/sell.</span>
       </footer>
     </div>
   );

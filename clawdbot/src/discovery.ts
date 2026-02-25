@@ -71,6 +71,7 @@ function collectFromPairs(
         mcapUsd: mcap,
         pairCreatedAt: created,
         liquidityUsd: liq,
+        pairUrl: p.url,
       });
       if (candidates.length >= maxCount) return;
     }

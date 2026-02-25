@@ -10,6 +10,7 @@ interface Pair {
   priceNative?: string;
   fdv?: number;
   marketCap?: number;
+  volume?: { h24?: number };
 }
 
 async function getTokenPriceUsdDexScreener(mint: string): Promise<number | null> {
@@ -39,15 +40,25 @@ export async function getTokenPriceUsd(mint: string): Promise<number | null> {
 
 /** Fetch current token mcap (FDV) in USD from DexScreener. */
 export async function getTokenMcapUsd(mint: string): Promise<number | null> {
+  const s = await getTokenStats(mint);
+  return s?.mcapUsd ?? null;
+}
+
+/** Fetch mcap and 24h volume from DexScreener (one request). */
+export async function getTokenStats(mint: string): Promise<{ mcapUsd: number; volumeUsd: number } | null> {
   try {
     const res = await fetch(`${DEXSCREENER}/token-pairs/v1/solana/${mint}`);
     if (!res.ok) return null;
     const data = (await res.json()) as { pairs?: Pair[] };
     const pairs = data?.pairs ?? [];
     const p = pairs[0];
+    if (!p) return null;
     const mcap = p?.fdv ?? p?.marketCap;
+    const vol = p?.volume?.h24 ?? 0;
     if (mcap == null) return null;
-    return typeof mcap === "number" ? mcap : parseFloat(String(mcap));
+    const mcapUsd = typeof mcap === "number" ? mcap : parseFloat(String(mcap));
+    const volumeUsd = typeof vol === "number" ? vol : parseFloat(String(vol)) || 0;
+    return { mcapUsd, volumeUsd };
   } catch {
     return null;
   }
