@@ -1,11 +1,16 @@
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import { join } from "path";
-const envPath = [join(process.cwd(), ".env"), join(process.cwd(), "..", ".env")].find((p) => existsSync(p));
+const envPath = [
+  join(process.cwd(), ".env"),
+  join(process.cwd(), "..", ".env"),
+  join(process.cwd(), "..", "..", ".env"),
+].find((p) => existsSync(p));
 if (envPath) config({ path: envPath });
 import { loadFilters, getDataDir, DEMO_MODE, getLobbiOwnTokenMint } from "./config.js";
 import { setState, getOpenTrade, getRecentMints, tryAcquireCycleLock, releaseCycleLock, clearStaleOpenTrades, updateOpenTradeToSold } from "./storage.js";
 import { discoverCandidates } from "./discovery.js";
+import { loadKeypair } from "./wallet.js";
 import { executeBuy, executeSell, recordOpenBuy, getWalletBalanceSol } from "./trade.js";
 import { planHold, buildNarrativeWhy } from "./analysis.js";
 import { getTokenPriceUsd, getTokenMcapUsd, getTokenStats, getBondingCurveSolReserves } from "./price.js";
@@ -22,6 +27,7 @@ import { askLobbiShouldSell } from "./llm.js";
 import type { CandidateCoin, HoldPlan, LobbiState } from "./types.js";
 
 const HOLD_POLL_MS = 5_000;
+let _loggedNoWallet = false;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -64,7 +70,7 @@ async function holdAndSell(
     if (holdSeconds >= MAX_HOLD_SECONDS) {
       console.log("[Lobbi] Max hold time reached (10m), forcing sell.");
       shouldSell = true;
-      reason = "Max hold 10m";
+      reason = `Max hold 10m—time-based exit (held ${Math.floor(holdSeconds / 60)}m)`;
     } else if (!hasLlm) {
       continue;
     } else {
@@ -126,6 +132,16 @@ async function runCycle(): Promise<void> {
 async function runCycleBody(): Promise<void> {
   const filters = loadFilters();
 
+  if (!loadKeypair()) {
+    if (!_loggedNoWallet) {
+      console.log("[Clawdbot] No WALLET_PRIVATE_KEY in .env—idle. Add wallet to enable trading.");
+      _loggedNoWallet = true;
+    }
+    setState({ kind: "idle", at: new Date().toISOString() });
+    emitIdle();
+    return;
+  }
+
   const open = getOpenTrade();
   if (open) {
     setState({
@@ -163,6 +179,8 @@ async function runCycleBody(): Promise<void> {
   const recentMints = new Set(getRecentMints(10));
   const ownTokenMint = getLobbiOwnTokenMint();
   if (ownTokenMint) recentMints.add(ownTokenMint);
+  const openMint = getOpenTrade()?.mint;
+  if (openMint) recentMints.add(openMint);
   const candidates = await discoverCandidates(filters, {
     excludeMints: recentMints,
     poolSize: 12,

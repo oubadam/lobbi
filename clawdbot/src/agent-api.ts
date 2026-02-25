@@ -39,6 +39,8 @@ export async function getCandidates(): Promise<CandidateCoin[]> {
   const recent = new Set(getRecentMints(10));
   const ownTokenMint = getLobbiOwnTokenMint();
   if (ownTokenMint) recent.add(ownTokenMint);
+  const open = getOpenTrade();
+  if (open?.mint) recent.add(open.mint);
   const candidates = await discoverCandidates(filters, { excludeMints: recent, poolSize: 12 });
   if (!hasBirdeyeApiKey() || candidates.length === 0) return candidates;
   const enriched = await Promise.all(
@@ -172,3 +174,5 @@ export async function sell(): Promise<
     return { ok: false, error: msg };
   }
 }
+
+export { getWalletBalanceSol } from "./trade.js";

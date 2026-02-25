@@ -14,6 +14,8 @@ import { TradeFeed } from "./TradeFeed";
 import { WalletBalanceChart } from "./WalletBalanceChart";
 import DelicateAsciiDots from "./components/ui/delicate-ascii-dots";
 import CursorDitherTrail from "./components/ui/cursor-dither-trail";
+import { CAButton } from "./components/CAButton";
+import { SocialLinks } from "./components/SocialLinks";
 
 const POLL_MS = 3000;
 
@@ -80,7 +82,10 @@ export default function App() {
             lobbi · powered by openclaw · one position at a time · ai decides when to buy/sell
           </span>
         </div>
-        <span className="live-dot" title="data refreshes every 3s">live</span>
+        <div className="header-right">
+          <CAButton variant="header" />
+          <span className="live-dot" title="data refreshes every 3s">live</span>
+        </div>
       </header>
 
       {error && (
@@ -156,7 +161,13 @@ export default function App() {
       </section>
 
       <footer className="footer">
-        lobbi memecoin · lobbi trades solana memecoins (powered by openclaw) · creator rewards fund the claw
+        <div className="footer-main">
+          <CAButton variant="footer" />
+          <SocialLinks />
+        </div>
+        <p className="footer-text">
+          lobbi memecoin · lobbi trades solana memecoins (powered by openclaw) · creator rewards fund the claw
+        </p>
       </footer>
       </div>
     </div>

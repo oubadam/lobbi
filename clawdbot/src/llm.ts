@@ -31,9 +31,10 @@ Why we bought: ${whyBought}
 
 Current: PnL ${pnl.toFixed(1)}%, held ${holdMin}m.
 
-RULES: Max hold 10 minutes. Make proper decisions based on price action and momentum—memecoins can 2x or 10x in seconds, or dump hard. Cut losses around -20% to -30%. Take profits when momentum fades or you see clear exit signals. Use your judgment.
+RULES: Max hold 10 minutes. Cut losses around -20% to -30%. Take profits when momentum fades. Use your judgment.
 
-Should we SELL now? Reply with exactly "SELL" or "HOLD". If SELL, add one short reason after a comma.`;
+Should we SELL now? Reply with exactly "SELL" or "HOLD".
+If SELL, add a detailed reason after a comma. Be specific—e.g. "cutting losses at -25%", "taking profits, momentum faded", "volume slowing down", "holders dropping", "price rejected at resistance", "max hold reached", "stop loss hit".`;
 
   try {
     let text = "";

@@ -21,10 +21,30 @@ function loadTrades(): TradeRecord[] {
   const p = dataPath(TRADES_FILE);
   if (!existsSync(p)) return [];
   try {
-    return JSON.parse(readFileSync(p, "utf-8"));
+    const raw = JSON.parse(readFileSync(p, "utf-8")) as TradeRecord[];
+    return dedupeOpenTrades(raw);
   } catch {
     return [];
   }
+}
+
+/** Remove duplicate open buys (same mint+txBuy). Keeps first occurrence. */
+function dedupeOpenTrades(trades: TradeRecord[]): TradeRecord[] {
+  const seen = new Set<string>();
+  const out: TradeRecord[] = [];
+  for (const t of trades) {
+    if (!t.sellTimestamp || t.sellTimestamp === "") {
+      const key = `${t.mint}:${t.txBuy ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    out.push(t);
+  }
+  if (out.length < trades.length) {
+    writeFileSync(dataPath(TRADES_FILE), JSON.stringify(out, null, 2));
+    tradesCache = out;
+  }
+  return out;
 }
 
 function loadState(): LobbiState | null {
@@ -49,7 +69,18 @@ export function getRecentMints(lastN: number): string[] {
   return closed.slice(0, lastN).map((t) => t.mint);
 }
 
+/** Returns true if we already have a buy record for this mint+tx (prevents duplicate entries). */
+export function hasDuplicateBuy(mint: string, txBuy?: string): boolean {
+  const all = loadTrades();
+  if (!txBuy) return all.some((x) => x.mint === mint && !x.sellTimestamp);
+  return all.some((x) => x.mint === mint && x.txBuy === txBuy);
+}
+
 export function appendTrade(t: TradeRecord): void {
+  if (t.txBuy && hasDuplicateBuy(t.mint, t.txBuy)) {
+    console.warn("[Clawdbot] Skipping duplicate buy record:", t.symbol, t.txBuy.slice(0, 8) + "...");
+    return;
+  }
   const all = loadTrades();
   all.unshift(t);
   writeFileSync(dataPath(TRADES_FILE), JSON.stringify(all, null, 2));

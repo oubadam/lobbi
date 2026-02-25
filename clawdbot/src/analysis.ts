@@ -82,55 +82,94 @@ export function planHold(
   };
 }
 
-/** Build a narrative "why" sentence for the trade feed. Includes token name, socials when available, community/movement. */
+/** Pick one option based on a deterministic hash of input (same coin = same pick, different coins = varied). */
+function pick<T>(options: T[], seed: string): T {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return options[h % options.length]!;
+}
+
+/** Build a unique, coin-specific "why bought" narrative. Varied phrasing based on actual metrics. */
 export function buildNarrativeWhy(
   coin: CandidateCoin,
   plan: HoldPlan,
   holderStats?: HolderStats | null,
   ageMinutes?: number
 ): string {
-  const parts: string[] = [];
   const name = coin.name || coin.symbol || "Unknown";
   const mcap = coin.mcapUsd ?? 0;
   const vol = coin.volumeUsd ?? 0;
+  const mcapK = (mcap / 1000).toFixed(1);
+  const volK = (vol / 1000).toFixed(1);
+  const seed = coin.mint + coin.symbol;
 
-  parts.push(`Bought ${name} ($${coin.symbol}) — `);
+  const openings = [
+    `${name} ($${coin.symbol}) — `,
+    `$${coin.symbol} — `,
+    `${name} — `,
+  ];
+  let s = "Bought " + pick(openings, seed);
 
   if (mcap > 0 && vol > 0) {
     const velocity = vol / mcap;
-    if (velocity > 0.5) {
-      parts.push(`Strong volume ($${(vol / 1000).toFixed(1)}k) vs mcap ($${(mcap / 1000).toFixed(1)}k) suggests organic interest and healthy community movement.`);
-    } else if (velocity > 0.2) {
-      parts.push(`Solid volume ($${(vol / 1000).toFixed(1)}k) and mcap ($${(mcap / 1000).toFixed(1)}k) with decent velocity and trading activity.`);
-    } else {
-      parts.push(`Mcap $${(mcap / 1000).toFixed(1)}k, volume $${(vol / 1000).toFixed(1)}k.`);
-    }
+    const velPhrases: string[] =
+      velocity > 2
+        ? [
+            `Unusual ${velocity.toFixed(1)}x vol/mcap ($${volK}k / $${mcapK}k)—strong momentum.`,
+            `Vol $${(vol / 1000).toFixed(0)}k crushes mcap $${mcapK}k (${velocity.toFixed(1)}x)—real interest.`,
+          ]
+        : velocity > 0.8
+          ? [
+              `Vol $${volK}k vs mcap $${mcapK}k (${velocity.toFixed(1)}x)—healthy trading activity.`,
+              `$${volK}k volume on $${mcapK}k mcap—decent velocity and interest.`,
+            ]
+          : velocity > 0.3
+            ? [
+                `$${volK}k vol, $${mcapK}k mcap—solid ratio.`,
+                `Volume and mcap in line: $${volK}k / $${mcapK}k.`,
+              ]
+            : [
+                `Lower vol ($${volK}k) for $${mcapK}k mcap—speculative play.`,
+                `$${mcapK}k mcap, $${volK}k vol—early stage.`,
+              ];
+    s += pick(velPhrases, seed + "v");
   } else if (mcap > 0) {
-    parts.push(`Mcap $${(mcap / 1000).toFixed(1)}k.`);
+    s += `Mcap $${mcapK}k. `;
   }
 
-  if (ageMinutes != null && ageMinutes < 60) {
-    parts.push(`Token is only ${ageMinutes}m old—early momentum play.`);
-  } else if (ageMinutes != null) {
-    parts.push(`Age ${ageMinutes}m.`);
-  }
-
-  if (coin.twitter || coin.website) {
-    const socials: string[] = [];
-    if (coin.twitter) socials.push(`Twitter: ${coin.twitter}`);
-    if (coin.website) socials.push(`Website: ${coin.website}`);
-    parts.push(`Socials linked: ${socials.join(", ")}.`);
+  if (ageMinutes != null) {
+    const agePhrases: string[] =
+      ageMinutes < 5
+        ? [`Fresh: ${ageMinutes}m old. `, `Very new: ${ageMinutes}m. `]
+        : ageMinutes < 20
+          ? [`${ageMinutes}m old—early entry. `, `Age ${ageMinutes}m. `]
+          : ageMinutes < 45
+            ? [`${ageMinutes}m in—momentum phase. `, `Token ${ageMinutes}m old. `]
+            : [`${ageMinutes}m old. `];
+    s += pick(agePhrases, seed + "a");
   }
 
   if (holderStats) {
-    if (holderStats.isGoodHolders) {
-      parts.push(`Community looks healthy: ${holderStats.holderCount} holders, top 10 hold ${holderStats.top10PercentOfSupply.toFixed(0)}%—not concentrated.`);
-    } else {
-      parts.push(`Holders: ${holderStats.holderCount}, top 10 hold ${holderStats.top10PercentOfSupply.toFixed(0)}%.`);
-    }
+    const h = holderStats.holderCount;
+    const t10 = holderStats.top10PercentOfSupply.toFixed(0);
+    const holderPhrases: string[] = holderStats.isGoodHolders
+      ? [
+          `${h} holders, top 10 = ${t10}%—distributed. `,
+          `Good distribution: ${h} holders, ${t10}% in top 10. `,
+        ]
+      : [
+          `${h} holders, top 10 hold ${t10}%. `,
+          `Holder base: ${h}, top 10 = ${t10}%. `,
+        ];
+    s += pick(holderPhrases, seed + "h");
   }
 
-  parts.push(`Exit decisions made by the agent based on live analysis of price, narrative, and community.`);
+  if (coin.twitter || coin.website) {
+    const links: string[] = [];
+    if (coin.twitter) links.push(coin.twitter);
+    if (coin.website) links.push(coin.website);
+    s += `Socials: ${links.join(", ")}. `;
+  }
 
-  return parts.join(" ");
+  return s.trim();
 }

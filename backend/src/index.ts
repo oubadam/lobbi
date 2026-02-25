@@ -12,12 +12,19 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = Number(process.env.PORT) || 4000;
+const isProd = process.env.NODE_ENV === "production";
 
-// In demo mode we don't have a wallet; use mock balance that increases with PnL
-function getBalance(): number {
+async function getBalance(): Promise<number> {
+  try {
+    const { getWalletBalanceSol } = await import("clawdbot/agent");
+    const real = await getWalletBalanceSol();
+    if (real != null) return real;
+  } catch {
+    /* fallback to trades-based */
+  }
   const trades = realTradesOnly(getTrades()).filter((t) => t.sellTimestamp);
   const totalPnl = trades.reduce((s, t) => s + t.pnlSol, 0);
-  return 1 + totalPnl; // start 1 SOL + PnL
+  return 1 + totalPnl;
 }
 
 function realTradesOnly<T extends { mint: string }>(trades: T[]): T[] {
@@ -35,8 +42,8 @@ app.get("/api/trades/latest", (req, res) => {
   res.json({ trades });
 });
 
-app.get("/api/balance", (_req, res) => {
-  const balance = getBalance();
+app.get("/api/balance", async (_req, res) => {
+  const balance = await getBalance();
   res.json({ balanceSol: balance });
 });
 
@@ -150,6 +157,15 @@ app.get("/api/agent/info", (_req, res) => {
   });
 });
 
+// Serve static web build in production
+if (isProd) {
+  const webDist = join(process.cwd(), "web", "dist");
+  if (existsSync(webDist)) {
+    app.use(express.static(webDist));
+    app.get("*", (_req, res) => res.sendFile(join(webDist, "index.html")));
+  }
+}
+
 app.listen(PORT, () => {
-  console.log(`[Backend] API on http://localhost:${PORT}`);
+  console.log(`[Backend] API on http://localhost:${PORT}${isProd ? " (serving web)" : ""}`);
 });

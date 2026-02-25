@@ -84,10 +84,26 @@ export async function executeBuy(
   const tx = VersionedTransaction.deserialize(new Uint8Array(buf));
   tx.sign([keypair]);
   const conn = new Connection(rpc);
-  const sig = await conn.sendTransaction(tx, { skipPreflight: false, maxRetries: 3 });
-  // Approximate token amount from SOL spent (exact would need parsing swap result)
+
+  let sig: string;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      sig = await conn.sendTransaction(tx, {
+        skipPreflight: attempt >= 2,
+        maxRetries: 3,
+      });
+      break;
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (msg.includes("Blockhash not found") && attempt < 2) {
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      throw e;
+    }
+  }
   const tokenAmount = Math.floor(solAmount * 1e9 * 1000);
-  return { tokenAmount, tx: sig };
+  return { tokenAmount, tx: sig! };
 }
 
 export async function executeSell(
@@ -116,14 +132,31 @@ export async function executeSell(
   });
   const tx = VersionedTransaction.deserialize(new Uint8Array(buf));
   tx.sign([keypair]);
-  const sig = await conn.sendTransaction(tx, { skipPreflight: false, maxRetries: 3 });
+
+  let sig: string | undefined;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      sig = await conn.sendTransaction(tx, {
+        skipPreflight: attempt >= 2,
+        maxRetries: 3,
+      });
+      break;
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (msg.includes("Blockhash not found") && attempt < 2) {
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      throw e;
+    }
+  }
 
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
-  await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+  await conn.confirmTransaction({ signature: sig!, blockhash, lastValidBlockHeight }, "confirmed");
 
   const balAfter = await conn.getBalance(keypair.publicKey);
   const solReceived = Math.max(0, (balAfter - balBefore) / LAMPORTS_PER_SOL);
-  return { solReceived, tx: sig };
+  return { solReceived, tx: sig! };
 }
 
 /** Record a buy immediately so the trade feed shows the BUY when Live Claw does. */
