@@ -119,7 +119,7 @@ export default function App() {
             </div>
           </div>
         )}
-        <LobbiScene state={state} />
+        <LobbiScene state={state} trades={trades} />
       </section>
 
       <section className="feed-section" aria-label="Trade feed">
@@ -129,7 +129,7 @@ export default function App() {
       <footer className="footer">
         Lobbi memecoin · Clawdbot trades Solana memecoins · Creator rewards fund the claw
         <br />
-        <span className="footer-note">Not <a href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer">OpenClaw</a> (the personal AI assistant). This is a separate pump.fun trading bot.</span>
+        <span className="footer-note">Want <a href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer">OpenClaw</a> to drive trading? Install the skill from <code>openclaw-skill/</code>, run backend only, and use OpenClaw to buy/sell.</span>
       </footer>
     </div>
   );

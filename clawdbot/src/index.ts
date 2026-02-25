@@ -1,5 +1,5 @@
 import { loadFilters, getDataDir, DEMO_MODE } from "./config.js";
-import { setState, getRecentMints, tryAcquireCycleLock, releaseCycleLock, updateOpenTradeToSold, clearStaleOpenTrades } from "./storage.js";
+import { setState, getOpenTrade, getRecentMints, tryAcquireCycleLock, releaseCycleLock, updateOpenTradeToSold, clearStaleOpenTrades } from "./storage.js";
 import { discoverCandidates } from "./discovery.js";
 import { executeBuy, executeSell, recordOpenBuy, getWalletBalanceSol } from "./trade.js";
 import { planHold } from "./analysis.js";
@@ -12,7 +12,7 @@ import {
   emitBought,
   emitSold,
 } from "./state.js";
-import type { CandidateCoin, LobbiState } from "./types.js";
+import type { CandidateCoin, HoldPlan, LobbiState } from "./types.js";
 
 const LOOP_DELAY_MS = 3 * 60 * 1000;
 const HOLD_POLL_MS = 5_000;
@@ -24,6 +24,138 @@ function sleep(ms: number): Promise<void> {
 
 function pickOne<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
+}
+
+async function holdAndSell(
+  mint: string,
+  symbol: string,
+  buySol: number,
+  tokenAmount: number,
+  filters: ReturnType<typeof loadFilters>,
+  plan: HoldPlan
+): Promise<void> {
+  let sellTimestamp = "";
+  let solReceived = 0;
+  let txSell: string | undefined;
+  let buyPriceUsd: number | null = null;
+
+  if (DEMO_MODE) {
+    buyPriceUsd = await getTokenPriceUsd(mint);
+    console.log("[Clawdbot] Holding position for at least 2 min (enforced)...");
+    await sleep(MIN_HOLD_MS);
+    const extraMs = Math.min(
+      Math.max(0, (filters.holdMaxSeconds - filters.holdMinSeconds) * 1000),
+      8 * 60 * 1000
+    );
+    if (extraMs > 0) {
+      const extra = Math.floor(extraMs * Math.random());
+      console.log("[Clawdbot] Extra hold", Math.round(extra / 1000), "s");
+      await sleep(extra);
+    }
+    let sellPriceUsd = await getTokenPriceUsd(mint);
+    if (sellPriceUsd == null) {
+      await sleep(2000);
+      sellPriceUsd = await getTokenPriceUsd(mint) ?? null;
+    }
+    const res = await executeSell(mint, tokenAmount, filters);
+    txSell = res.tx;
+    if (buyPriceUsd != null && buyPriceUsd > 0 && sellPriceUsd != null) {
+      solReceived = buySol * (sellPriceUsd / buyPriceUsd);
+    } else {
+      solReceived = buySol * 0.95;
+    }
+    sellTimestamp = new Date().toISOString();
+  } else {
+    buyPriceUsd = await getTokenPriceUsd(mint);
+    const start = Date.now();
+    const tpMult = 1 + plan.takeProfitPercent / 100;
+    const slMult = 1 + plan.stopLossPercent / 100;
+    const effectiveHoldMinMs = Math.max(plan.holdMinMs, MIN_HOLD_MS);
+    let sold = false;
+
+    while (Date.now() - start < plan.holdMaxMs) {
+      await sleep(HOLD_POLL_MS);
+      const elapsed = Date.now() - start;
+      if (elapsed < effectiveHoldMinMs) continue;
+
+      const priceUsd = await getTokenPriceUsd(mint);
+      if (priceUsd != null && buyPriceUsd != null && buyPriceUsd > 0) {
+        if (priceUsd >= buyPriceUsd * tpMult) {
+          const balBefore = await getWalletBalanceSol();
+          const res = await executeSell(mint, tokenAmount, filters);
+          sellTimestamp = new Date().toISOString();
+          txSell = res.tx;
+          if (res.solReceived <= 0 && balBefore != null) {
+            await sleep(5000);
+            const balAfter = await getWalletBalanceSol();
+            if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
+          } else {
+            solReceived = res.solReceived;
+          }
+          sold = true;
+          break;
+        }
+        if (priceUsd <= buyPriceUsd * slMult) {
+          const balBefore = await getWalletBalanceSol();
+          const res = await executeSell(mint, tokenAmount, filters);
+          sellTimestamp = new Date().toISOString();
+          txSell = res.tx;
+          if (res.solReceived <= 0 && balBefore != null) {
+            await sleep(5000);
+            const balAfter = await getWalletBalanceSol();
+            if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
+          } else {
+            solReceived = res.solReceived;
+          }
+          sold = true;
+          break;
+        }
+      }
+      if (Date.now() - start >= plan.holdMaxMs) break;
+    }
+
+    if (!sold) {
+      const balBefore = await getWalletBalanceSol();
+      const res = await executeSell(mint, tokenAmount, filters);
+      sellTimestamp = new Date().toISOString();
+      txSell = res.tx;
+      if (res.solReceived <= 0 && balBefore != null) {
+        await sleep(5000);
+        const balAfter = await getWalletBalanceSol();
+        if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
+      } else {
+        solReceived = res.solReceived;
+      }
+    }
+    if (solReceived <= 0 && buyPriceUsd != null && buyPriceUsd > 0) {
+      const sellPriceUsd = await getTokenPriceUsd(mint);
+      if (sellPriceUsd != null) solReceived = buySol * (sellPriceUsd / buyPriceUsd);
+    }
+  }
+
+  if (!sellTimestamp) {
+    const balBefore = await getWalletBalanceSol();
+    const res = await executeSell(mint, tokenAmount, filters);
+    sellTimestamp = new Date().toISOString();
+    txSell = res.tx;
+    if (res.solReceived <= 0 && balBefore != null) {
+      await sleep(5000);
+      const balAfter = await getWalletBalanceSol();
+      if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
+    } else {
+      solReceived = res.solReceived;
+    }
+  }
+  if (solReceived <= 0 && buyPriceUsd != null && buyPriceUsd > 0) {
+    const sellPriceUsdNow = await getTokenPriceUsd(mint);
+    if (sellPriceUsdNow != null) solReceived = buySol * (sellPriceUsdNow / buyPriceUsd);
+  }
+  if (solReceived <= 0) solReceived = buySol * 0.95;
+
+  const mcapAtSellUsd = await getTokenMcapUsd(mint);
+  updateOpenTradeToSold(solReceived, tokenAmount, sellTimestamp, txSell, mcapAtSellUsd ?? undefined);
+  emitSold(mint, symbol, solReceived - buySol, txSell);
+  await sleep(8000);
 }
 
 async function runCycle(): Promise<void> {
@@ -40,6 +172,32 @@ async function runCycle(): Promise<void> {
 
 async function runCycleBody(): Promise<void> {
   const filters = loadFilters();
+
+  const open = getOpenTrade();
+  if (open) {
+    setState({
+      kind: "bought",
+      at: new Date().toISOString(),
+      message: `Bought ${open.symbol}`,
+      chosenMint: open.mint,
+      chosenSymbol: open.symbol,
+      chosenMcapUsd: open.mcapUsd,
+      chosenReason: open.why,
+    } as LobbiState);
+    const resumePlan: HoldPlan = {
+      holdMinMs: filters.holdMinSeconds * 1000,
+      holdMaxMs: filters.holdMaxSeconds * 1000,
+      takeProfitPercent: filters.takeProfitPercent,
+      stopLossPercent: filters.stopLossPercent,
+      reason: "resumed",
+    };
+    await holdAndSell(open.mint, open.symbol, open.buySol, open.buyTokenAmount, filters, resumePlan);
+    emitIdle();
+    console.log("[Clawdbot] Waiting 3 min before next buy.");
+    await sleep(LOOP_DELAY_MS);
+    return;
+  }
+
   emitIdle();
   await sleep(2000);
 
@@ -126,136 +284,7 @@ async function runCycleBody(): Promise<void> {
   emitBought(chosen.mint, chosen.symbol, txBuy, chosen.mcapUsd ?? undefined, holderCount, buyReason);
   await sleep(2000);
 
-  let sellTimestamp = "";
-  let solReceived = 0;
-  let txSell: string | undefined;
-  let buyPriceUsd: number | null = null;
-
-  if (DEMO_MODE) {
-    buyPriceUsd = await getTokenPriceUsd(chosen.mint);
-    console.log("[Clawdbot] Holding position for at least 2 min (enforced)...");
-    await sleep(MIN_HOLD_MS);
-    const extraMs = Math.min(
-      Math.max(0, (filters.holdMaxSeconds - filters.holdMinSeconds) * 1000),
-      8 * 60 * 1000
-    );
-    if (extraMs > 0) {
-      const extra = Math.floor(extraMs * Math.random());
-      console.log("[Clawdbot] Extra hold", Math.round(extra / 1000), "s");
-      await sleep(extra);
-    }
-    let sellPriceUsd = await getTokenPriceUsd(chosen.mint);
-    if (sellPriceUsd == null) {
-      await sleep(2000);
-      sellPriceUsd = await getTokenPriceUsd(chosen.mint) ?? null;
-    }
-    const res = await executeSell(chosen.mint, tokenAmount, filters);
-    txSell = res.tx;
-    if (buyPriceUsd != null && buyPriceUsd > 0 && sellPriceUsd != null) {
-      solReceived = buySol * (sellPriceUsd / buyPriceUsd);
-    } else {
-      solReceived = buySol * 0.95;
-    }
-    sellTimestamp = new Date().toISOString();
-  } else {
-    buyPriceUsd = await getTokenPriceUsd(chosen.mint);
-    const start = Date.now();
-    const tpMult = 1 + plan.takeProfitPercent / 100;
-    const slMult = 1 + plan.stopLossPercent / 100;
-    const effectiveHoldMinMs = Math.max(plan.holdMinMs, MIN_HOLD_MS);
-    let sold = false;
-
-    while (Date.now() - start < plan.holdMaxMs) {
-      await sleep(HOLD_POLL_MS);
-      const elapsed = Date.now() - start;
-      if (elapsed < effectiveHoldMinMs) continue;
-
-      const priceUsd = await getTokenPriceUsd(chosen.mint);
-      if (priceUsd != null && buyPriceUsd != null && buyPriceUsd > 0) {
-        if (priceUsd >= buyPriceUsd * tpMult) {
-          const balBefore = await getWalletBalanceSol();
-          const res = await executeSell(chosen.mint, tokenAmount, filters);
-          sellTimestamp = new Date().toISOString();
-          txSell = res.tx;
-          if (res.solReceived <= 0 && balBefore != null) {
-            await sleep(5000);
-            const balAfter = await getWalletBalanceSol();
-            if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
-          } else {
-            solReceived = res.solReceived;
-          }
-          sold = true;
-          break;
-        }
-        if (priceUsd <= buyPriceUsd * slMult) {
-          const balBefore = await getWalletBalanceSol();
-          const res = await executeSell(chosen.mint, tokenAmount, filters);
-          sellTimestamp = new Date().toISOString();
-          txSell = res.tx;
-          if (res.solReceived <= 0 && balBefore != null) {
-            await sleep(5000);
-            const balAfter = await getWalletBalanceSol();
-            if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
-          } else {
-            solReceived = res.solReceived;
-          }
-          sold = true;
-          break;
-        }
-      }
-      if (elapsed >= plan.holdMaxMs) break;
-    }
-
-    if (!sold) {
-      const balBefore = await getWalletBalanceSol();
-      const res = await executeSell(chosen.mint, tokenAmount, filters);
-      sellTimestamp = new Date().toISOString();
-      txSell = res.tx;
-      if (res.solReceived <= 0 && balBefore != null) {
-        await sleep(5000);
-        const balAfter = await getWalletBalanceSol();
-        if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
-      } else {
-        solReceived = res.solReceived;
-      }
-    }
-    if (solReceived <= 0 && buyPriceUsd != null && buyPriceUsd > 0) {
-      const sellPriceUsd = await getTokenPriceUsd(chosen.mint);
-      if (sellPriceUsd != null) solReceived = buySol * (sellPriceUsd / buyPriceUsd);
-    }
-  }
-
-  if (!sellTimestamp) {
-    const balBefore = await getWalletBalanceSol();
-    const res = await executeSell(chosen.mint, tokenAmount, filters);
-    sellTimestamp = new Date().toISOString();
-    txSell = res.tx;
-    if (res.solReceived <= 0 && balBefore != null) {
-      await sleep(5000);
-      const balAfter = await getWalletBalanceSol();
-      if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
-    } else {
-      solReceived = res.solReceived;
-    }
-  }
-  if (solReceived <= 0 && buyPriceUsd != null && buyPriceUsd > 0) {
-    const sellPriceUsdNow = await getTokenPriceUsd(chosen.mint);
-    if (sellPriceUsdNow != null) solReceived = buySol * (sellPriceUsdNow / buyPriceUsd);
-  }
-  if (solReceived <= 0) solReceived = buySol * 0.95;
-
-  const mcapAtSellUsd = await getTokenMcapUsd(chosen.mint);
-
-  updateOpenTradeToSold(
-    solReceived,
-    tokenAmount,
-    sellTimestamp,
-    txSell,
-    mcapAtSellUsd ?? undefined
-  );
-
-  emitSold(chosen.mint, chosen.symbol, solReceived - buySol, txSell);
-  await sleep(8000);
+  await holdAndSell(chosen.mint, chosen.symbol, buySol, tokenAmount, filters, plan);
   emitIdle();
   console.log("[Clawdbot] Waiting 3 min before next buy (lock held — one position at a time).");
   await sleep(LOOP_DELAY_MS);
@@ -267,10 +296,21 @@ async function main(): Promise<void> {
   console.log("[Clawdbot] Filters:", JSON.stringify(loadFilters(), null, 2));
   console.log("[Clawdbot] One position at a time. Loop delay: 3 min after each sell. Min hold: 2 min.");
 
-  setState({
-    kind: "idle",
-    at: new Date().toISOString(),
-  } as LobbiState);
+  const open = getOpenTrade();
+  if (open) {
+    setState({
+      kind: "bought",
+      at: new Date().toISOString(),
+      message: `Bought ${open.symbol}`,
+      chosenMint: open.mint,
+      chosenSymbol: open.symbol,
+      chosenMcapUsd: open.mcapUsd,
+      chosenReason: open.why,
+    } as LobbiState);
+    console.log("[Clawdbot] Resuming open position:", open.symbol);
+  } else {
+    setState({ kind: "idle", at: new Date().toISOString() } as LobbiState);
+  }
 
   while (true) {
     try {
