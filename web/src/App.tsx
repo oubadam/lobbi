@@ -5,12 +5,14 @@ import {
   fetchPnl,
   fetchBalanceChart,
   fetchLobbiState,
+  fetchLogs,
   type TradeRecord,
   type LobbiState,
   type BalanceChartPoint,
 } from "./api";
 import { LobbiScene } from "./LobbiScene";
 import { TradeFeed } from "./TradeFeed";
+import { LogsPanel } from "./LogsPanel";
 import { WalletBalanceChart } from "./WalletBalanceChart";
 import DelicateAsciiDots from "./components/ui/delicate-ascii-dots";
 import CursorDitherTrail from "./components/ui/cursor-dither-trail";
@@ -25,6 +27,7 @@ export default function App() {
   const [pnl, setPnl] = useState<number>(0);
   const [balanceChartPoints, setBalanceChartPoints] = useState<BalanceChartPoint[]>([]);
   const [state, setState] = useState<LobbiState | null>(null);
+  const [logs, setLogs] = useState<import("./api").LogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   function poll() {
@@ -34,13 +37,15 @@ export default function App() {
       fetchPnl(),
       fetchBalanceChart(),
       fetchLobbiState(),
+      fetchLogs(100),
     ])
-      .then(([t, b, p, chart, s]) => {
+      .then(([t, b, p, chart, s, logsData]) => {
         setTrades(t);
         setBalance(b);
         setPnl(p.totalPnlSol);
         setBalanceChartPoints(chart.points ?? []);
         setState(s);
+        setLogs(logsData);
         setError(null);
       })
       .catch((e) => {
@@ -144,6 +149,12 @@ export default function App() {
           lobbi scans candidates, picks based on narrative + holder quality, and decides when to buy/sell. no fixed tp/sl—lobbi analyses metrics in real time. powered by openclaw.
         </p>
         <LobbiScene state={state} trades={trades} />
+      </section>
+
+      <section className="logs-section" aria-label="ai logs">
+        <h2 className="section-label">ai logs</h2>
+        <p className="section-desc">lobbi&apos;s internal reasoning—scanning, choosing tokens, hold/sell decisions. live.</p>
+        <LogsPanel logs={logs} />
       </section>
 
       <section className="feed-section" aria-label="live trade feed">

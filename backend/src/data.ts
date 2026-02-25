@@ -19,6 +19,7 @@ const dataDir = process.env.DATA_DIR
   : join(root, "data");
 const TRADES_FILE = "trades.json";
 const STATE_FILE = "state.json";
+const LOGS_FILE = "logs.json";
 const configDir = join(root, "config");
 
 export interface FiltersConfig {
@@ -113,4 +114,19 @@ export function getTrades(): TradeRecord[] {
 
 export function getState(): LobbiState | null {
   return readJson<LobbiState | null>(STATE_FILE, null);
+}
+
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  type: string;
+  message: string;
+  symbol?: string;
+  pnlPercent?: number;
+  holdMin?: number;
+  reason?: string;
+}
+
+export function getLogs(): LogEntry[] {
+  return readJson<LogEntry[]>(LOGS_FILE, []);
 }

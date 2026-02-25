@@ -5,7 +5,7 @@ const envPath = [join(process.cwd(), ".env"), join(process.cwd(), "..", ".env")]
 if (envPath) config({ path: envPath });
 import express from "express";
 import cors from "cors";
-import { getTrades, getState, getFilters } from "./data.js";
+import { getTrades, getState, getFilters, getLogs } from "./data.js";
 
 const app = express();
 app.use(cors());
@@ -75,6 +75,12 @@ app.get("/api/balance/chart", (_req, res) => {
 app.get("/api/lobbi/state", (_req, res) => {
   const state = getState();
   res.json(state ?? { kind: "idle", at: new Date().toISOString() });
+});
+
+app.get("/api/logs", (req, res) => {
+  const limit = Math.min(Number(req.query?.limit) || 100, 300);
+  const logs = getLogs().slice(0, limit);
+  res.json({ logs });
 });
 
 app.get("/api/filters", (_req, res) => {

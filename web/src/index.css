@@ -561,7 +561,53 @@ a:hover { text-decoration: underline; }
 }
 .stats-section { margin-bottom: 24px; }
 .claw-section { margin-bottom: 24px; }
+.logs-section { margin-bottom: 24px; }
 .feed-section { margin-bottom: 24px; }
+
+/* AI Logs */
+.logs-panel {
+  max-height: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.logs-desc, .logs-empty {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0 0 12px 0;
+}
+.logs-list {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.logs-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border-left: 4px solid var(--border);
+  background: var(--bg);
+}
+.logs-row.log-buy { border-left-color: var(--green); background: rgba(25, 135, 84, 0.06); }
+.logs-row.log-sell { border-left-color: var(--red); background: rgba(220, 53, 69, 0.06); }
+.logs-row.log-hold { border-left-color: var(--lobbi-orange); background: rgba(232, 93, 4, 0.06); }
+.logs-row.log-error { border-left-color: var(--red); }
+.logs-badge {
+  font-family: var(--pixel-font);
+  font-size: 0.55rem;
+  color: var(--muted);
+  min-width: 36px;
+}
+.logs-time { font-size: 0.75rem; color: var(--muted); min-width: 48px; }
+.logs-msg { flex: 1; overflow-wrap: anywhere; word-break: break-word; }
+.logs-pnl { font-weight: 600; font-size: 0.8rem; }
+.logs-pnl.positive { color: var(--green); }
+.logs-pnl.negative { color: var(--red); }
 .balance-chart-section { margin-bottom: 24px; }
 
 /* Wallet balance chart */

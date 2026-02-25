@@ -11,7 +11,9 @@ function dataPath(file: string): string {
 
 const TRADES_FILE = "trades.json";
 const STATE_FILE = "state.json";
+const LOGS_FILE = "logs.json";
 const CYCLE_LOCK_FILE = ".cycle-lock";
+const MAX_LOGS = 300;
 const LOCK_MAX_AGE_MS = 15 * 60 * 1000;
 
 let tradesCache: TradeRecord[] = [];
@@ -177,4 +179,39 @@ export function releaseCycleLock(): void {
   } catch {
     /* ignore */
   }
+}
+
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  type: "idle" | "thinking" | "candidates" | "chosen" | "bought" | "hold" | "sell" | "skip" | "error";
+  message: string;
+  symbol?: string;
+  pnlPercent?: number;
+  holdMin?: number;
+  reason?: string;
+}
+
+function genLogId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+export function appendLog(entry: Omit<LogEntry, "id" | "timestamp">): void {
+  const full: LogEntry = {
+    ...entry,
+    id: genLogId(),
+    timestamp: new Date().toISOString(),
+  };
+  const p = dataPath(LOGS_FILE);
+  let logs: LogEntry[] = [];
+  if (existsSync(p)) {
+    try {
+      logs = JSON.parse(readFileSync(p, "utf-8"));
+    } catch {
+      /* ignore */
+    }
+  }
+  logs.unshift(full);
+  if (logs.length > MAX_LOGS) logs = logs.slice(0, MAX_LOGS);
+  writeFileSync(p, JSON.stringify(logs, null, 2));
 }

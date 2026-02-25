@@ -8,7 +8,7 @@ const envPath = [
 ].find((p) => existsSync(p));
 if (envPath) config({ path: envPath });
 import { loadFilters, getDataDir, DEMO_MODE, getLobbiOwnTokenMint } from "./config.js";
-import { setState, getOpenTrade, getRecentMints, tryAcquireCycleLock, releaseCycleLock, clearStaleOpenTrades, updateOpenTradeToSold } from "./storage.js";
+import { setState, getOpenTrade, getRecentMints, tryAcquireCycleLock, releaseCycleLock, clearStaleOpenTrades, updateOpenTradeToSold, appendLog } from "./storage.js";
 import { discoverCandidates } from "./discovery.js";
 import { loadKeypair } from "./wallet.js";
 import { executeBuy, executeSell, recordOpenBuy, getWalletBalanceSol } from "./trade.js";
@@ -71,6 +71,7 @@ async function holdAndSell(
       console.log("[Lobbi] Max hold time reached (10m), forcing sell.");
       shouldSell = true;
       reason = `Max hold 10m—time-based exit (held ${Math.floor(holdSeconds / 60)}m)`;
+      appendLog({ type: "sell", symbol, message: `Max hold 10m—forcing sell`, reason, holdMin: Math.floor(holdSeconds / 60) });
     } else if (!hasLlm) {
       continue;
     } else {
@@ -87,6 +88,13 @@ async function holdAndSell(
       const result = await askLobbiShouldSell(symbol, open.why ?? "", quote);
       shouldSell = result.shouldSell;
       reason = result.reason;
+      const pnlPct = quote?.unrealizedPnlPercent ?? 0;
+      const holdMin = Math.floor(holdSeconds / 60);
+      if (shouldSell) {
+        appendLog({ type: "sell", symbol, message: `SELL: ${reason ?? "LLM decided"}`, reason, pnlPercent: pnlPct, holdMin });
+      } else if (holdSeconds % 30 < 5) {
+        appendLog({ type: "hold", symbol, message: `HOLD — PnL ${pnlPct.toFixed(1)}%, held ${holdMin}m`, pnlPercent: pnlPct, holdMin });
+      }
     }
     if (!shouldSell) continue;
 
@@ -135,6 +143,7 @@ async function runCycleBody(): Promise<void> {
   if (!loadKeypair()) {
     if (!_loggedNoWallet) {
       console.log("[Clawdbot] No WALLET_PRIVATE_KEY in .env—idle. Add wallet to enable trading.");
+      appendLog({ type: "idle", message: "No wallet—idle. Add WALLET_PRIVATE_KEY to enable trading." });
       _loggedNoWallet = true;
     }
     setState({ kind: "idle", at: new Date().toISOString() });
@@ -144,6 +153,7 @@ async function runCycleBody(): Promise<void> {
 
   const open = getOpenTrade();
   if (open) {
+    appendLog({ type: "idle", symbol: open.symbol, message: `Resuming: holding $${open.symbol}` });
     setState({
       kind: "bought",
       at: new Date().toISOString(),
@@ -161,6 +171,7 @@ async function runCycleBody(): Promise<void> {
       reason: "resumed",
     };
     await holdAndSell(open.mint, open.symbol, open.buySol, open.buyTokenAmount, filters, resumePlan);
+    appendLog({ type: "idle", message: `Sold. Waiting ${((filters.loopDelayMs ?? 3 * 60 * 1000) / 1000)}s before next scan.` });
     emitIdle();
     const loopDelay = filters.loopDelayMs ?? 3 * 60 * 1000;
     if (loopDelay > 0) {
@@ -174,6 +185,7 @@ async function runCycleBody(): Promise<void> {
   await sleep(2000);
 
   emitThinking();
+  appendLog({ type: "thinking", message: "Scanning pump.fun for candidates..." });
   await sleep(3000);
 
   const recentMints = new Set(getRecentMints(10));
@@ -186,15 +198,24 @@ async function runCycleBody(): Promise<void> {
     poolSize: 12,
   });
   if (candidates.length === 0) {
-    console.log("[Clawdbot] No candidates found this cycle (filters: ≤1h old, mcap $10k–$31.4k, min vol $12k). Retrying next cycle.");
+    appendLog({ type: "skip", message: "No candidates found (filters: ≤1h old, mcap $10k–$31.4k, min vol $12k). Retrying next cycle." });
     emitIdle();
     return;
   }
 
+  appendLog({
+    type: "candidates",
+    message: `Found ${candidates.length} candidates: ${candidates.slice(0, 5).map((c) => c.symbol).join(", ")}${candidates.length > 5 ? "…" : ""}`,
+  });
   emitChoosing(candidates);
   await sleep(1000);
 
   const chosen = pickOne(candidates);
+  appendLog({
+    type: "chosen",
+    symbol: chosen.symbol,
+    message: `Chose $${chosen.symbol} — ${chosen.reason}`,
+  });
   if (chosen.mint.startsWith("DemoMint") || (ownTokenMint && chosen.mint === ownTokenMint)) {
     emitIdle();
     return;
@@ -251,6 +272,11 @@ async function runCycleBody(): Promise<void> {
       ? Math.round((Date.now() - chosen.pairCreatedAt) / 60000)
       : undefined;
   const narrativeWhy = buildNarrativeWhy(chosen, plan, holderStats, ageMinutesAtBuy);
+  appendLog({
+    type: "bought",
+    symbol: chosen.symbol,
+    message: `Bought $${chosen.symbol} — ${narrativeWhy.slice(0, 120)}…`,
+  });
 
   clearStaleOpenTrades();
   recordOpenBuy(
@@ -272,10 +298,10 @@ async function runCycleBody(): Promise<void> {
   await sleep(2000);
 
   await holdAndSell(chosen.mint, chosen.symbol, buySol, tokenAmount, filters, plan);
+  appendLog({ type: "idle", message: `Sold. Waiting ${((filters.loopDelayMs ?? 3 * 60 * 1000) / 1000)}s before next scan.` });
   emitIdle();
   const loopDelay = filters.loopDelayMs ?? 3 * 60 * 1000;
   if (loopDelay > 0) {
-    console.log(`[Clawdbot] Waiting ${loopDelay / 1000}s before next buy.`);
     await sleep(loopDelay);
   }
 }
@@ -293,6 +319,7 @@ async function main(): Promise<void> {
 
   const open = getOpenTrade();
   if (open) {
+    appendLog({ type: "idle", symbol: open.symbol, message: `Resuming: holding $${open.symbol}` });
     setState({
       kind: "bought",
       at: new Date().toISOString(),

@@ -108,6 +108,23 @@ export async function fetchLobbiState(): Promise<LobbiState | null> {
   return data;
 }
 
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  type: string;
+  message: string;
+  symbol?: string;
+  pnlPercent?: number;
+  holdMin?: number;
+  reason?: string;
+}
+
+export async function fetchLogs(limit = 100): Promise<LogEntry[]> {
+  const res = await apiFetch(`/logs?limit=${limit}`);
+  const data = await res.json();
+  return data.logs ?? [];
+}
+
 export interface FiltersConfig {
   minVolumeUsd?: number;
   minMcapUsd?: number;
