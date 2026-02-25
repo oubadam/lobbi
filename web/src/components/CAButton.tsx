@@ -7,7 +7,7 @@ interface Props {
 
 export function CAButton({ variant = "header" }: Props) {
   const [copied, setCopied] = useState(false);
-  const ca = LOBBI_CA && LOBBI_CA !== "YOUR_CONTRACT_ADDRESS_HERE" ? LOBBI_CA : "...";
+  const ca = LOBBI_CA && !LOBBI_CA.startsWith("YOUR_") ? LOBBI_CA : "...";
 
   const copyAddress = useCallback(() => {
     navigator.clipboard.writeText(ca).then(() => {
