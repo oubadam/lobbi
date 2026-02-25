@@ -48,3 +48,8 @@ export function getDataDir(): string {
 }
 
 export const DEMO_MODE = process.env.DEMO_MODE === "true" || !process.env.SOLANA_RPC_URL;
+
+/** Lobbi's own token mint—bot will never buy or sell it. Set LOBBI_OWN_TOKEN_MINT in .env */
+export function getLobbiOwnTokenMint(): string {
+  return (process.env.LOBBI_OWN_TOKEN_MINT || "").trim();
+}

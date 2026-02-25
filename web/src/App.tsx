@@ -98,10 +98,16 @@ export default function App() {
             <a href="https://openclaw.ai" target="_blank" rel="noopener noreferrer">openclaw</a>. you just watch.
           </p>
           <p>
+            <strong>it starts with 1 SOL and trades it up, as long as it can.</strong>
+          </p>
+          <p>
             <strong>how it works:</strong> lobbi scans pump.fun for coins, picks based on narrative and holder quality, then buys. for sells, it uses ai to judge price action and momentum—when to take profits, when to cut losses—with no fixed tp/sl. one position at a time, flips in minutes.
           </p>
           <p>
             the bot wallet trades in real time. every buy and sell shows in the feed below, with exact pnl per trade. creator rewards from the wallet fund the claw and keep it running.
+          </p>
+          <p>
+            the X account is automated—it posts about what lobbi is thinking, current wallet balance, and the trades it took.
           </p>
         </div>
       </section>

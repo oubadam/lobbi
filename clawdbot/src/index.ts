@@ -3,7 +3,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 const envPath = [join(process.cwd(), ".env"), join(process.cwd(), "..", ".env")].find((p) => existsSync(p));
 if (envPath) config({ path: envPath });
-import { loadFilters, getDataDir, DEMO_MODE } from "./config.js";
+import { loadFilters, getDataDir, DEMO_MODE, getLobbiOwnTokenMint } from "./config.js";
 import { setState, getOpenTrade, getRecentMints, tryAcquireCycleLock, releaseCycleLock, clearStaleOpenTrades, updateOpenTradeToSold } from "./storage.js";
 import { discoverCandidates } from "./discovery.js";
 import { executeBuy, executeSell, recordOpenBuy, getWalletBalanceSol } from "./trade.js";
@@ -46,10 +46,14 @@ async function holdAndSell(
   if (!hasLlm) {
     console.warn("[Lobbi] No ANTHROPIC_API_KEY or OPENAI_API_KEY—Lobbi cannot decide when to sell. Set one for autonomous trading.");
   }
+  const ownTokenMint = getLobbiOwnTokenMint();
+
   while (true) {
     await sleep(HOLD_POLL_MS);
     const open = getOpenTrade();
     if (!open || open.mint !== mint) return;
+
+    if (ownTokenMint && open.mint === ownTokenMint) continue;
 
     const buyTimestamp = open.buyTimestamp ? new Date(open.buyTimestamp).getTime() : Date.now();
     const holdSeconds = Math.round((Date.now() - buyTimestamp) / 1000);
@@ -157,6 +161,8 @@ async function runCycleBody(): Promise<void> {
   await sleep(3000);
 
   const recentMints = new Set(getRecentMints(10));
+  const ownTokenMint = getLobbiOwnTokenMint();
+  if (ownTokenMint) recentMints.add(ownTokenMint);
   const candidates = await discoverCandidates(filters, {
     excludeMints: recentMints,
     poolSize: 12,
@@ -171,7 +177,7 @@ async function runCycleBody(): Promise<void> {
   await sleep(1000);
 
   const chosen = pickOne(candidates);
-  if (chosen.mint.startsWith("DemoMint")) {
+  if (chosen.mint.startsWith("DemoMint") || (ownTokenMint && chosen.mint === ownTokenMint)) {
     emitIdle();
     return;
   }

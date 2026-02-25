@@ -3,7 +3,7 @@
  * One position at a time. Agent calls getCandidates → choose → buy(mint) → later sell().
  */
 import type { CandidateCoin } from "./types.js";
-import { loadFilters } from "./config.js";
+import { loadFilters, getLobbiOwnTokenMint } from "./config.js";
 import { discoverCandidates } from "./discovery.js";
 import { executeBuy, executeSell, recordOpenBuy, getWalletBalanceSol } from "./trade.js";
 import { getState, getOpenTrade, getRecentMints, clearStaleOpenTrades, updateOpenTradeToSold } from "./storage.js";
@@ -37,6 +37,8 @@ export interface BuyParams {
 export async function getCandidates(): Promise<CandidateCoin[]> {
   const filters = loadFilters();
   const recent = new Set(getRecentMints(10));
+  const ownTokenMint = getLobbiOwnTokenMint();
+  if (ownTokenMint) recent.add(ownTokenMint);
   const candidates = await discoverCandidates(filters, { excludeMints: recent, poolSize: 12 });
   if (!hasBirdeyeApiKey() || candidates.length === 0) return candidates;
   const enriched = await Promise.all(
@@ -93,6 +95,10 @@ export async function buy(params: BuyParams): Promise<{ ok: true; symbol: string
   if (open) {
     return { ok: false, error: `Already in position: ${open.symbol}. Sell first.` };
   }
+  const ownTokenMint = getLobbiOwnTokenMint();
+  if (ownTokenMint && params.mint === ownTokenMint) {
+    return { ok: false, error: "Cannot buy this token." };
+  }
   const filters = loadFilters();
   const amountSol = Math.min(params.amountSol ?? 0.1, filters.maxPositionSol);
   const candidate: CandidateCoin = {
@@ -133,6 +139,10 @@ export async function sell(): Promise<
   const open = getOpenTrade();
   if (!open) {
     return { ok: false, error: "No open position to sell." };
+  }
+  const ownTokenMint = getLobbiOwnTokenMint();
+  if (ownTokenMint && open.mint === ownTokenMint) {
+    return { ok: false, error: "Cannot sell this position." };
   }
   const filters = loadFilters();
   try {
