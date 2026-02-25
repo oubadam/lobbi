@@ -88,6 +88,13 @@ export function updateOpenTradeToSold(
   tradesCache = all;
 }
 
+/** Current open position (trade with no sell yet). Only one at a time. */
+export function getOpenTrade(): TradeRecord | null {
+  const all = loadTrades();
+  const t = all.find((x) => !x.sellTimestamp || x.sellTimestamp === "");
+  return t ?? null;
+}
+
 export function getState(): LobbiState | null {
   stateCache = loadState();
   return stateCache;

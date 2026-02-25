@@ -31,7 +31,8 @@ export function emitBought(
   symbol: string,
   tx?: string,
   mcapUsd?: number,
-  holderCount?: number
+  holderCount?: number,
+  reason?: string
 ): void {
   emitState({
     kind: "bought",
@@ -42,6 +43,7 @@ export function emitBought(
     lastTx: tx,
     chosenMcapUsd: mcapUsd,
     chosenHolderCount: holderCount,
+    chosenReason: reason,
   });
 }
 

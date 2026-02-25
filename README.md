@@ -41,6 +41,18 @@ No Solana keys or RPC needed. The bot runs in **demo mode** and generates fake t
 
    The bot will cycle: idle → thinking → choosing (from 3 candidates on the ASCII screens) → buy → hold → sell, and write trades + state to `data/`. The website polls every 3s so you see Lobbi move and the trade feed update.
 
+## OpenClaw agent trading
+
+You can have the **OpenClaw** personal AI ([openclaw.ai](https://openclaw.ai)) drive LOBBI trading instead of the automatic loop. The OpenClaw agent decides which coin to buy and when to sell using a skill that calls the LOBBI backend.
+
+1. **Build and run the backend** (with shared `DATA_DIR`):  
+   `npm run build` then `DATA_DIR=./data node backend/dist/index.js` (or `npm run dev:backend` from repo root).
+2. **Install the LOBBI skill** into your OpenClaw workspace:  
+   Copy or symlink `openclaw-skill` to `~/.openclaw/workspace/skills/lobbi-trading`. See **openclaw-skill/README.md** for details.
+3. **Refresh OpenClaw skills** (or restart the gateway). Then ask your assistant e.g. “What can LOBBI buy?”, “Buy a LOBBI coin”, “Sell LOBBI position”.
+
+When using OpenClaw to trade, **do not** run the standalone bot loop (`npm run dev:bot`) so only the agent is in control.
+
 ## Project layout
 
 ```
@@ -48,9 +60,10 @@ lobbi/
 ├── config/
 │   └── filters.json     # Clawdbot filters (position size, hold time, etc.)
 ├── data/                # Created by bot: trades.json, state.json
-├── clawdbot/            # Trading agent
-├── backend/             # API (Express)
+├── clawdbot/            # Trading agent (loop or agent API)
+├── backend/             # API (Express) + /api/agent/* for OpenClaw
 ├── web/                 # Vite + React frontend
+├── openclaw-skill/      # OpenClaw skill so the agent can trade LOBBI
 ├── lobbi.jpg            # Lobbi mascot
 └── PLAN.md              # Full project plan
 ```

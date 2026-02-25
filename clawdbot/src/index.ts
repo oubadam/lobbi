@@ -122,7 +122,8 @@ async function runCycleBody(): Promise<void> {
     chosen.mcapUsd
   );
   const holderCount = holderStats?.holderCount;
-  emitBought(chosen.mint, chosen.symbol, txBuy, chosen.mcapUsd ?? undefined, holderCount);
+  const buyReason = chosen.reason + " | hold: " + plan.reason;
+  emitBought(chosen.mint, chosen.symbol, txBuy, chosen.mcapUsd ?? undefined, holderCount, buyReason);
   await sleep(2000);
 
   let sellTimestamp = "";
@@ -146,7 +147,7 @@ async function runCycleBody(): Promise<void> {
     let sellPriceUsd = await getTokenPriceUsd(chosen.mint);
     if (sellPriceUsd == null) {
       await sleep(2000);
-      sellPriceUsd = await getTokenPriceUsd(chosen.mint) ?? undefined;
+      sellPriceUsd = await getTokenPriceUsd(chosen.mint) ?? null;
     }
     const res = await executeSell(chosen.mint, tokenAmount, filters);
     txSell = res.tx;
@@ -254,7 +255,7 @@ async function runCycleBody(): Promise<void> {
   );
 
   emitSold(chosen.mint, chosen.symbol, solReceived - buySol, txSell);
-  await sleep(1000);
+  await sleep(8000);
   emitIdle();
   console.log("[Clawdbot] Waiting 3 min before next buy (lock held — one position at a time).");
   await sleep(LOOP_DELAY_MS);

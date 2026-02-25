@@ -132,9 +132,6 @@ a:hover { text-decoration: underline; }
   max-width: 100%;
 }
 
-.lobbi-walk-container.lobbi-center {
-  left: 50%;
-}
 
 .screen-single .screen-symbol {
   font-size: 1rem;
@@ -211,6 +208,7 @@ a:hover { text-decoration: underline; }
   font-size: 0.75rem;
   color: var(--muted);
   line-height: 1.2;
+  margin-top: 6px;
 }
 
 .screen-empty {
@@ -219,11 +217,22 @@ a:hover { text-decoration: underline; }
 }
 
 .lobbi-walk-container {
+  transition: transform 0.2s ease;
+}
+.lobbi-walk-container.lobbi-center {
   position: absolute;
   bottom: 80px;
   transform: translateX(-50%);
-  transition: left 0.5s ease-out;
+  left: 50%;
   z-index: 2;
+}
+.lobbi-walk-container.lobbi-below {
+  position: relative;
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  left: auto;
+  transform: none;
 }
 
 .lobbi-sprite {
@@ -393,9 +402,20 @@ a:hover { text-decoration: underline; }
 .trade-feed-row-main {
   flex: 1;
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.trade-feed-row-line1 {
+  display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
+}
+.trade-feed-row-why {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.2;
 }
 
 .trade-feed-row-sep { color: var(--muted); }
@@ -503,6 +523,19 @@ a:hover { text-decoration: underline; }
   color: var(--muted);
   font-size: 0.9rem;
   padding: 12px;
+}
+.footer-note {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+.footer a {
+  color: var(--muted);
+  text-decoration: underline;
+}
+.footer a:hover {
+  color: var(--lobbi-orange);
 }
 
 /* Scrollbar */

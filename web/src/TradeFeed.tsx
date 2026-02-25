@@ -16,8 +16,6 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString();
 }
 
-const SOLSCAN = "https://solscan.io/token/";
-
 export function TradeFeed({ trades }: Props) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -61,27 +59,34 @@ export function TradeFeed({ trades }: Props) {
           <div key={ev.type + ev.trade.id + ev.timestamp + i} className={`trade-feed-row trade-feed-row-${ev.type}`}>
             <div className="trade-feed-row-badge">{ev.type === "buy" ? "BUY" : "SELL"}</div>
             <div className="trade-feed-row-main">
-              <span className="trade-symbol">{ev.trade.symbol}</span>
-              {ev.type === "buy" && ev.trade.mcapUsd != null && (
-                <span className="trade-feed-row-mcap"> · Mcap @ buy ${(ev.trade.mcapUsd / 1000).toFixed(1)}k</span>
-              )}
-              {ev.type === "sell" && ev.trade.mcapAtSellUsd != null && (
-                <span className="trade-feed-row-mcap"> · Mcap @ sell ${(ev.trade.mcapAtSellUsd / 1000).toFixed(1)}k</span>
-              )}
-              <span className="trade-feed-row-sep"> · </span>
-              {ev.type === "buy" ? (
-                <>
-                  <span className="trade-feed-row-sol">{ev.trade.buySol.toFixed(4)} SOL</span>
-                  <span className="trade-feed-row-meta">{formatTime(ev.timestamp)}</span>
-                </>
-              ) : (
-                <>
-                  <span className="trade-feed-row-sol">{ev.trade.sellSol.toFixed(4)} SOL</span>
-                  <span className={`trade-feed-row-pnl ${ev.trade.pnlSol >= 0 ? "positive" : "negative"}`}>
-                    {ev.trade.pnlSol >= 0 ? "+" : ""}{ev.trade.pnlSol.toFixed(4)} SOL
-                  </span>
-                  <span className="trade-feed-row-meta">{formatTime(ev.timestamp)}</span>
-                </>
+              <div className="trade-feed-row-line1">
+                <span className="trade-symbol">{ev.trade.symbol}</span>
+                {ev.type === "buy" && ev.trade.mcapUsd != null && (
+                  <span className="trade-feed-row-mcap"> · Mcap @ buy ${(ev.trade.mcapUsd / 1000).toFixed(1)}k</span>
+                )}
+                {ev.type === "sell" && ev.trade.mcapAtSellUsd != null && (
+                  <span className="trade-feed-row-mcap"> · Mcap @ sell ${(ev.trade.mcapAtSellUsd / 1000).toFixed(1)}k</span>
+                )}
+                <span className="trade-feed-row-sep"> · </span>
+                {ev.type === "buy" ? (
+                  <>
+                    <span className="trade-feed-row-sol">{ev.trade.buySol.toFixed(4)} SOL</span>
+                    <span className="trade-feed-row-meta">{formatTime(ev.timestamp)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="trade-feed-row-sol">{ev.trade.sellSol.toFixed(4)} SOL</span>
+                    <span className={`trade-feed-row-pnl ${ev.trade.pnlSol >= 0 ? "positive" : "negative"}`}>
+                      {ev.trade.pnlSol >= 0 ? "+" : ""}{ev.trade.pnlSol.toFixed(4)} SOL
+                    </span>
+                    <span className="trade-feed-row-meta">{formatTime(ev.timestamp)}</span>
+                  </>
+                )}
+              </div>
+              {ev.trade.why && (
+                <div className="trade-feed-row-why" title={ev.trade.why}>
+                  Why: {ev.trade.why}
+                </div>
               )}
             </div>
             <button

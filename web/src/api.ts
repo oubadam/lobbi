@@ -59,6 +59,7 @@ export interface LobbiState {
   lastTx?: string;
   chosenMcapUsd?: number;
   chosenHolderCount?: number;
+  chosenReason?: string;
 }
 
 export async function fetchTrades(): Promise<TradeRecord[]> {

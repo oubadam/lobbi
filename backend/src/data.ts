@@ -97,6 +97,9 @@ export interface LobbiState {
   chosenMint?: string;
   chosenSymbol?: string;
   lastTx?: string;
+  chosenMcapUsd?: number;
+  chosenHolderCount?: number;
+  chosenReason?: string;
 }
 
 export function getTrades(): TradeRecord[] {

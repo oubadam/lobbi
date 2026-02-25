@@ -35,9 +35,16 @@ export function LobbiScene({ state }: Props) {
           <div className="screen-frame">
             <div className="screen-title">[ CLAW ]</div>
             <div className="screen-content">
-              {showSelecting && (
+              {kind === "sold" && (
+                <div className="screen-single">
+                  <div className="screen-symbol">{state?.chosenSymbol ?? "—"}</div>
+                  <div className="screen-message">{message || "Position closed"}</div>
+                  <div className="screen-reason">Next: selecting in a few seconds…</div>
+                </div>
+              )}
+              {showSelecting && kind !== "sold" && (
                 <div className="screen-empty">
-                  {kind === "sold" ? "Selecting next coin…" : kind === "idle" ? "Selecting next coin… (filters: ≤1h, mcap, vol)" : "Searching for coins…"}
+                  {kind === "idle" ? "Selecting next coin… (filters: ≤1h, mcap, vol)" : "Searching for coins…"}
                 </div>
               )}
               {kind === "bought" && (
@@ -54,6 +61,11 @@ export function LobbiScene({ state }: Props) {
                       )}
                     </div>
                   )}
+                  {state?.chosenReason && (
+                    <div className="screen-reason" title={state.chosenReason}>
+                      Why: {state.chosenReason}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -61,19 +73,19 @@ export function LobbiScene({ state }: Props) {
         </div>
       </div>
 
-      <div className="lobbi-walk-container lobbi-center" aria-hidden>
+      <div className="lobbi-message lobbi-message-above-lobster">
+        {kind === "idle" && "Selecting next coin (filters: ≤1h old, mcap, vol)."}
+        {(kind === "thinking" || kind === "choosing") && "Searching for coins…"}
+        {kind === "bought" && (message ? `Bought ${state?.chosenSymbol ?? ""}` : "Bought!")}
+        {kind === "sold" && (message ? `${message} — selecting next…` : "Sold — selecting next…")}
+      </div>
+
+      <div className="lobbi-walk-container lobbi-below" aria-hidden>
         <img
           src="/lobbi.png"
           alt="Lobbi"
           className={`lobbi-sprite ${kind}`}
         />
-      </div>
-
-      <div className="lobbi-message">
-        {kind === "idle" && "Selecting next coin (filters: ≤1h old, mcap, vol)."}
-        {(kind === "thinking" || kind === "choosing") && "Searching for coins…"}
-        {kind === "bought" && (message ? `Bought ${state?.chosenSymbol ?? ""}` : "Bought!")}
-        {kind === "sold" && (message ? `${message} — selecting next…` : "Sold — selecting next…")}
       </div>
     </div>
   );

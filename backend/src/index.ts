@@ -51,6 +51,82 @@ app.get("/api/filters", (_req, res) => {
   res.json(filters);
 });
 
+const LOBBI_AGENT_BASE = process.env.LOBBI_AGENT_BASE_URL || "http://localhost:4000";
+
+app.get("/api/agent/candidates", async (_req, res) => {
+  try {
+    const { getCandidates } = await import("clawdbot/agent");
+    const candidates = await getCandidates();
+    res.json({ candidates });
+  } catch (e) {
+    console.error("[Backend] Agent getCandidates error:", e);
+    res.status(503).json({
+      error: "Agent API unavailable. Build clawdbot and set DATA_DIR.",
+      detail: e instanceof Error ? e.message : String(e),
+    });
+  }
+});
+
+app.get("/api/agent/position", (_req, res) => {
+  import("clawdbot/agent")
+    .then(({ getPosition }) => {
+      const position = getPosition();
+      res.json(position);
+    })
+    .catch((e) => {
+      console.error("[Backend] Agent getPosition error:", e);
+      res.status(503).json({
+        error: "Agent API unavailable. Build clawdbot and set DATA_DIR.",
+        detail: e instanceof Error ? e.message : String(e),
+      });
+    });
+});
+
+app.post("/api/agent/buy", async (req, res) => {
+  try {
+    const { buy: agentBuy } = await import("clawdbot/agent");
+    const { mint, symbol, name, reason, amountSol } = req.body || {};
+    if (!mint || !symbol || !name) {
+      return res.status(400).json({ ok: false, error: "Missing mint, symbol, or name" });
+    }
+    const result = await agentBuy({ mint, symbol, name, reason, amountSol });
+    res.json(result);
+  } catch (e) {
+    console.error("[Backend] Agent buy error:", e);
+    res.status(500).json({
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+});
+
+app.post("/api/agent/sell", async (req, res) => {
+  try {
+    const { sell: agentSell } = await import("clawdbot/agent");
+    const result = await agentSell();
+    res.json(result);
+  } catch (e) {
+    console.error("[Backend] Agent sell error:", e);
+    res.status(500).json({
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+});
+
+app.get("/api/agent/info", (_req, res) => {
+  res.json({
+    message: "LOBBI agent API for OpenClaw. Use GET /api/agent/candidates, GET /api/agent/position, POST /api/agent/buy, POST /api/agent/sell.",
+    baseUrl: LOBBI_AGENT_BASE,
+    endpoints: {
+      candidates: `${LOBBI_AGENT_BASE}/api/agent/candidates`,
+      position: `${LOBBI_AGENT_BASE}/api/agent/position`,
+      buy: `${LOBBI_AGENT_BASE}/api/agent/buy`,
+      sell: `${LOBBI_AGENT_BASE}/api/agent/sell`,
+    },
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`[Backend] API on http://localhost:${PORT}`);
 });
