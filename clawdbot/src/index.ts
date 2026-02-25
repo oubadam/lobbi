@@ -260,7 +260,9 @@ async function runCycleBody(): Promise<void> {
   const holderStats = hasBirdeyeApiKey() ? await getHolderStats(chosen.mint) : null;
   const plan = planHold(chosen, filters, holderStats);
 
-  const buySol = Math.min(filters.maxPositionSol, 0.1);
+  const minBuy = filters.minPositionSol ?? 0.1;
+  const maxBuy = filters.maxPositionSol ?? 0.25;
+  const buySol = minBuy + Math.random() * (maxBuy - minBuy);
   const { tokenAmount, tx: txBuy } = await executeBuy(chosen, buySol, filters);
   const buyTimestamp = new Date().toISOString();
 

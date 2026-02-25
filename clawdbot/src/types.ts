@@ -4,6 +4,7 @@ export interface Filters {
   maxMcapUsd: number;
   minGlobalFeesPaidSol: number;
   maxAgeMinutes: number;
+  minPositionSol?: number;
   maxPositionSol: number;
   maxPositionPercent: number;
   maxCandidates: number;
