@@ -46,6 +46,25 @@ app.get("/api/pnl", (_req, res) => {
   res.json({ totalPnlSol, tradeCount: trades.length });
 });
 
+/** Wallet balance over time for chart: [{timestamp, balanceSol}, ...] */
+app.get("/api/balance/chart", (_req, res) => {
+  const trades = realTradesOnly(getTrades())
+    .filter((t) => t.sellTimestamp && t.sellTimestamp.length > 0)
+    .sort((a, b) => new Date(a.sellTimestamp!).getTime() - new Date(b.sellTimestamp!).getTime());
+  const points: { timestamp: string; balanceSol: number }[] = [];
+  const startBalance = 1;
+  let balance = startBalance;
+  points.push({
+    timestamp: trades[0]?.buyTimestamp ?? new Date().toISOString(),
+    balanceSol: startBalance,
+  });
+  for (const t of trades) {
+    balance += t.pnlSol;
+    points.push({ timestamp: t.sellTimestamp!, balanceSol: balance });
+  }
+  res.json({ points });
+});
+
 app.get("/api/lobbi/state", (_req, res) => {
   const state = getState();
   res.json(state ?? { kind: "idle", at: new Date().toISOString() });
@@ -120,7 +139,7 @@ app.post("/api/agent/sell", async (req, res) => {
 
 app.get("/api/agent/info", (_req, res) => {
   res.json({
-    message: "LOBBI agent API for OpenClaw. Use GET /api/agent/candidates, GET /api/agent/position, POST /api/agent/buy, POST /api/agent/sell.",
+    message: "Lobbi agent API. Use GET /api/agent/candidates, GET /api/agent/position, POST /api/agent/buy, POST /api/agent/sell. Lobbi runs on OpenClaw.",
     baseUrl: LOBBI_AGENT_BASE,
     endpoints: {
       candidates: `${LOBBI_AGENT_BASE}/api/agent/candidates`,

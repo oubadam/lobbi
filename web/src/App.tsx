@@ -3,14 +3,15 @@ import {
   fetchLatestTrades,
   fetchBalance,
   fetchPnl,
+  fetchBalanceChart,
   fetchLobbiState,
-  fetchFilters,
   type TradeRecord,
   type LobbiState,
-  type FiltersConfig,
+  type BalanceChartPoint,
 } from "./api";
 import { LobbiScene } from "./LobbiScene";
 import { TradeFeed } from "./TradeFeed";
+import { WalletBalanceChart } from "./WalletBalanceChart";
 
 const POLL_MS = 3000;
 
@@ -18,24 +19,24 @@ export default function App() {
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [balance, setBalance] = useState<number>(0);
   const [pnl, setPnl] = useState<number>(0);
+  const [balanceChartPoints, setBalanceChartPoints] = useState<BalanceChartPoint[]>([]);
   const [state, setState] = useState<LobbiState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FiltersConfig | null>(null);
 
   function poll() {
     Promise.all([
-      fetchLatestTrades(20),
+      fetchLatestTrades(50),
       fetchBalance(),
       fetchPnl(),
+      fetchBalanceChart(),
       fetchLobbiState(),
-      fetchFilters().catch(() => null),
     ])
-      .then(([t, b, p, s, f]) => {
+      .then(([t, b, p, chart, s]) => {
         setTrades(t);
         setBalance(b);
         setPnl(p.totalPnlSol);
+        setBalanceChartPoints(chart.points ?? []);
         setState(s);
-        if (f != null) setFilters(f);
         setError(null);
       })
       .catch((e) => {
@@ -58,11 +59,7 @@ export default function App() {
         <div className="header-titles">
           <h1>LOBBI</h1>
           <span className="header-sub">
-            Clawdbot · one position at a time · 3 min between trades
-            {filters != null && (
-              <> · hold {((filters.holdMinSeconds ?? 120) / 60)}–{((filters.holdMaxSeconds ?? 600) / 60)} min · TP +{filters.takeProfitPercent ?? 70}% / SL {filters.stopLossPercent ?? -30}% · min {(filters.minGlobalFeesPaidSol ?? 0.8)} SOL fees</>
-            )}
-            {filters == null && <> · hold 2–10 min · TP +70% / SL -30% · min 0.8 SOL fees</>}
+            Lobbi · powered by OpenClaw · one position at a time · AI decides when to buy/sell
           </span>
         </div>
         <span className="live-dot" title="Data refreshes every 3s">LIVE</span>
@@ -75,13 +72,26 @@ export default function App() {
         </div>
       )}
 
+      <section className="about-section" aria-label="About Lobbi">
+        <h2 className="section-label">About</h2>
+        <div className="panel about-panel">
+          <p>
+            <strong>Lobbi</strong> is an autonomous AI that trades Solana memecoins on Pump.fun. Powered by{" "}
+            <a href="https://openclaw.ai" target="_blank" rel="noopener noreferrer">OpenClaw</a>. Lobbi runs 24/7—no one asks it anything. You just watch.
+          </p>
+          <p>
+            <strong>How it works:</strong> Run backend + web + bot. Lobbi discovers candidates, picks based on narrative and holder quality, buys, then decides when to sell using its own analysis—no fixed take-profit or stop-loss. Requires <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> for autonomous sell decisions.
+          </p>
+        </div>
+      </section>
+
       <section className="stats-section" aria-label="Balance and PnL">
-        <h2 className="section-label">Balance & PnL</h2>
+        <h2 className="section-label">Bot wallet</h2>
         <div className="stats-row">
           <div className="panel stat-box">
-            <div className="panel-title">Wallet balance</div>
+            <div className="panel-title">Balance</div>
             <div className="stat-value">{balance.toFixed(4)} SOL</div>
-            <p className="stat-desc">Claw wallet (start 1 SOL + PnL)</p>
+            <p className="stat-desc">Current wallet (start 1 SOL + PnL)</p>
           </div>
           <div className="panel stat-box">
             <div className="panel-title">Total PnL</div>
@@ -91,7 +101,7 @@ export default function App() {
             >
               {pnl >= 0 ? "+" : ""}{pnl.toFixed(4)} SOL
             </div>
-            <p className="stat-desc">Sum of all trade PnL. With a linked wallet: real SOL in/out. In demo: simulated from prices.</p>
+            <p className="stat-desc">Sum of all trade PnL</p>
           </div>
         </div>
       </section>
@@ -99,35 +109,27 @@ export default function App() {
       <section className="claw-section" aria-label="Live claw">
         <h2 className="section-label">Live claw</h2>
         <p className="section-desc">
-          {filters != null ? (
-            <>Bot selects one coin (filters: ≤{filters.maxAgeMinutes ?? 60} min old, mcap ${((filters.minMcapUsd ?? 10000) / 1000).toFixed(0)}k–${((filters.maxMcapUsd ?? 31400) / 1000).toFixed(1)}k, min vol ${((filters.minVolumeUsd ?? 12000) / 1000).toFixed(0)}k, min {(filters.minGlobalFeesPaidSol ?? 0.8)} SOL fees, hold {(filters.holdMinSeconds ?? 120) / 60}–{(filters.holdMaxSeconds ?? 600) / 60} min, 3 min between). TP +{filters.takeProfitPercent ?? 70}% / SL {filters.stopLossPercent ?? -30}%.</>
-          ) : (
-            "Bot selects one coin (filters: ≤1h old, mcap $10k–$31.4k, min vol $12k, min 0.8 SOL fees, hold 2–10 min, 3 min between). TP +70% / SL -30%."
-          )}
+          Lobbi scans candidates, picks based on narrative + holder quality, and decides when to buy/sell. No fixed TP/SL—Lobbi analyses metrics in real time. Powered by OpenClaw.
         </p>
-        {filters != null && (
-          <div className="panel filters-verify" aria-label="Bot settings for verification">
-            <div className="panel-title">Bot settings (verify)</div>
-            <div className="filters-grid">
-              <span>Take profit: +{filters.takeProfitPercent ?? 70}%</span>
-              <span>Stop loss: {filters.stopLossPercent ?? -30}%</span>
-              <span>Min fees: {(filters.minGlobalFeesPaidSol ?? 0.8)} SOL</span>
-              <span>Hold: {(filters.holdMinSeconds ?? 120) / 60}–{(filters.holdMaxSeconds ?? 600) / 60} min</span>
-              <span>Mcap: ${((filters.minMcapUsd ?? 10000) / 1000).toFixed(0)}k–${((filters.maxMcapUsd ?? 31400) / 1000).toFixed(1)}k</span>
-              <span>Min volume: ${((filters.minVolumeUsd ?? 12000) / 1000).toFixed(0)}k</span>
-              <span>Max age: {filters.maxAgeMinutes ?? 60} min</span>
-            </div>
-          </div>
-        )}
         <LobbiScene state={state} trades={trades} />
       </section>
 
-      <section className="feed-section" aria-label="Trade feed">
+      <section className="feed-section" aria-label="Live trade feed">
+        <h2 className="section-label">Live trade feed</h2>
+        <p className="section-desc">Every buy and sell. Hover chart at bottom for balance at each point.</p>
         <TradeFeed trades={trades} />
       </section>
 
+      <section className="balance-chart-section" aria-label="Wallet balance over time">
+        <h2 className="section-label">Wallet balance chart</h2>
+        <div className="panel balance-chart-panel">
+          <div className="panel-title">[ BOT WALLET BALANCE OVER TIME ]</div>
+          <WalletBalanceChart points={balanceChartPoints} />
+        </div>
+      </section>
+
       <footer className="footer">
-        Lobbi memecoin · Clawdbot trades Solana memecoins · Creator rewards fund the claw
+        Lobbi memecoin · Lobbi trades Solana memecoins (powered by OpenClaw) · Creator rewards fund the claw
       </footer>
     </div>
   );

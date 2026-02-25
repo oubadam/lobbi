@@ -1,16 +1,14 @@
-# Lobbi — Clawdbot Memecoin
+# Lobbi — AI Memecoin (powered by OpenClaw)
 
-Lobbi is a memecoin with a **Clawdbot** that trades Solana memecoins. Creator rewards from the Lobbi token (on Pump.fun) fund the bot. This repo contains:
+Lobbi is an **autonomous AI** that trades Solana memecoins on Pump.fun. Powered by [OpenClaw](https://openclaw.ai). Lobbi runs 24/7—you just watch. No one asks it anything; it buys and sells on its own.
 
-- **Clawdbot** — Trading agent (filters, discover → choose → buy → sell, writes trades + state to `data/`)
-- **Backend** — API for the website (trades, balance, PnL, Lobbi state)
-- **Web** — ASCII/pixel-style site where you watch Lobbi think, choose a coin, and take trades live
+- **Backend** — API for the website and agent endpoints
+- **Web** — Watch Lobbi, the trade feed, PnL chart, and bot wallet
+- **Clawbot** — Autonomous loop: discovers candidates, buys, holds; Lobbi (via LLM) decides when to sell
 
-## Quick start (demo mode)
+## Quick start
 
-No Solana keys or RPC needed. The bot runs in **demo mode** and generates fake trades so you can see the full flow.
-
-1. **Install and run backend + web**
+1. **Install**
 
    ```bash
    npm install
@@ -19,40 +17,16 @@ No Solana keys or RPC needed. The bot runs in **demo mode** and generates fake t
    cd clawdbot && npm install && cd ..
    ```
 
-2. **Start backend and frontend**
+2. **Set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`** in `.env` — Lobbi uses this to decide when to sell (autonomous LLM calls).
 
-   ```bash
-   npm run dev
-   ```
-
-   This runs the API at **http://localhost:4000** and the site at **http://localhost:5173**. **Open the app at http://localhost:5173** (or http://localhost:5174 / 5175 if Vite picks another port when 5173 is in use).
-
-3. **Start the bot** (in another terminal, or run everything at once):
-
-   ```bash
-   npm run dev:bot
-   ```
-
-   Or run **backend + web + bot** in one go:
+3. **Run Lobbi** (backend + web + bot)
 
    ```bash
    npm run dev:all
    ```
+   or `npm run dev` + `npm run dev:bot` in another terminal.
 
-   The bot will cycle: idle → thinking → choosing (from 3 candidates on the ASCII screens) → buy → hold → sell, and write trades + state to `data/`. The website polls every 3s so you see Lobbi move and the trade feed update.
-
-## OpenClaw agent trading (full AI control)
-
-The **OpenClaw** AI agent ([openclaw.ai](https://openclaw.ai)) drives LOBBI trading: scans candidates (filtered by mcap, volume, age), picks based on **narrative + holder quality**, provides reasoning, and **decides when to take profit**.
-
-1. **Requirement:** Node >= 22.12.0. Run `./scripts/setup-openclaw-lobbi.sh`.
-2. **First-time:** `openclaw onboard --install-daemon` (needs Anthropic/OpenAI key).
-3. **Terminal 1 — Backend:** `cd lobbi && DATA_DIR=./data node backend/dist/index.js`
-4. **Terminal 2 — OpenClaw gateway:** `openclaw gateway --port 18789` (or `--allow-unconfigured` if you haven't run `openclaw onboard`)
-5. **Terminal 3 — Chat:** `openclaw dashboard` — ask "What can LOBBI buy?", "Buy a LOBBI coin", "Sell LOBBI position"
-6. **Optional — Web UI:** `npm run dev:web` to watch trades at http://localhost:5173
-
-**Do not** run `npm run dev:bot` — only OpenClaw drives trades.
+   API at **http://localhost:4000**, site at **http://localhost:5173**. Lobbi discovers, buys, holds, and sells on its own. You just watch.
 
 ## Project layout
 
@@ -62,9 +36,9 @@ lobbi/
 │   └── filters.json     # Clawdbot filters (position size, hold time, etc.)
 ├── data/                # Created by bot: trades.json, state.json
 ├── clawdbot/            # Trading agent (loop or agent API)
-├── backend/             # API (Express) + /api/agent/* for OpenClaw
+├── backend/             # API (Express) + /api/agent/* for Lobbi
 ├── web/                 # Vite + React frontend
-├── openclaw-skill/      # OpenClaw skill so the agent can trade LOBBI
+├── openclaw-skill/      # OpenClaw skill so Lobbi can trade
 ├── lobbi.jpg            # Lobbi mascot
 └── PLAN.md              # Full project plan
 ```
@@ -100,13 +74,14 @@ See **docs/APIS.md** for a list of all APIs used (DexScreener, PumpPortal, Birde
 | Command        | Description                    |
 |----------------|--------------------------------|
 | `npm run dev`  | Backend + web (concurrently)   |
-| `npm run dev:bot` | Clawdbot (demo or live)   |
+| `npm run dev:all` | Backend + web (same as dev) |
+| `npm run dev:bot` | Clawbot loop (optional; use only if not using Lobbi) |
 | `npm run dev:backend` | Backend only              |
 | `npm run dev:web`     | Web only                  |
-| `npm run build`      | Build bot, backend, web  |
+| `npm run build`      | Build clawbot, backend, web  |
 
 ## Tech
 
-- **Clawdbot**: Node + TypeScript, writes to `data/trades.json` and `data/state.json`. Real trading would use Jupiter API + Solana RPC (not wired in demo).
-- **Backend**: Express, serves `/api/trades`, `/api/balance`, `/api/pnl`, `/api/lobbi/state` from `data/`.
-- **Web**: React + Vite, pixel/ASCII theme (Press Start 2P, VT323), Lobbi sprite, live state and trade feed.
+- **Clawbot** (optional): Node + TypeScript, can run as a loop; normally Lobbi (via OpenClaw) drives trades.
+- **Backend**: Express, serves `/api/trades`, `/api/balance`, `/api/pnl`, `/api/pnl/chart`, `/api/agent/*` from `data/`.
+- **Web**: React + Vite, pixel/ASCII theme, Lobbi sprite, live state, trade feed, PnL chart.

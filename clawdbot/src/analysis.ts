@@ -87,8 +87,7 @@ export function buildNarrativeWhy(
   coin: CandidateCoin,
   plan: HoldPlan,
   holderStats?: HolderStats | null,
-  ageMinutes?: number,
-  pairUrl?: string
+  ageMinutes?: number
 ): string {
   const parts: string[] = [];
   const name = coin.name || coin.symbol || "Unknown";
@@ -131,11 +130,7 @@ export function buildNarrativeWhy(
     }
   }
 
-  if (pairUrl) {
-    parts.push(`Chart: ${pairUrl}`);
-  }
-
-  parts.push(` Exit decisions made by the agent based on live analysis of price, narrative, and community.`);
+  parts.push(`Exit decisions made by the agent based on live analysis of price, narrative, and community.`);
 
   return parts.join(" ");
 }

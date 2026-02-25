@@ -1,5 +1,10 @@
 import type { LobbiState, TradeRecord } from "./api";
 
+/** Strip DexScreener/chart URLs from text. */
+function stripUrls(text: string): string {
+  return text.replace(/\s*Chart:\s*https?:\/\/[^\s]+/gi, "").trim();
+}
+
 interface Props {
   state: LobbiState | null;
   trades: TradeRecord[];
@@ -39,62 +44,56 @@ export function LobbiScene({ state, trades }: Props) {
         </div>
       )}
 
-      <div className="screens-row screens-row-single">
-        <div className={`ascii-screen ${hasPosition ? "selected" : ""}`}>
-          <div className="screen-frame">
-            <div className="screen-title">[ CLAW ]</div>
-            <div className="screen-content">
-              {kind === "sold" && (
-                <div className="screen-single">
-                  <div className="screen-symbol">{state?.chosenSymbol ?? "—"}</div>
-                  <div className="screen-message">{message || "Position closed"}</div>
-                  <div className="screen-reason">Next: selecting in a few seconds…</div>
-                </div>
-              )}
-              {showSelecting && kind !== "sold" && (
-                <div className="screen-empty">
-                  {kind === "idle" ? "Selecting next coin… (filters: ≤1h, mcap, vol)" : "Searching for coins…"}
-                </div>
-              )}
-              {hasPosition && (
-                <div className="screen-single">
-                  <div className="screen-symbol">{effectiveSymbol}</div>
-                  <div className="screen-message">{message || "Position opened"}</div>
-                  {(effectiveMcap != null || state?.chosenHolderCount != null) && (
-                    <div className="screen-metrics">
-                      {effectiveMcap != null && (
-                        <span>Mcap @ entry ${(effectiveMcap / 1000).toFixed(1)}k</span>
-                      )}
-                      {state?.chosenHolderCount != null && (
-                        <span> · Holders: {state.chosenHolderCount}</span>
-                      )}
-                    </div>
-                  )}
+      <div className="lobbi-claw-and-sprite">
+        <div className="screens-row screens-row-single">
+          <div className={`ascii-screen ${hasPosition ? "selected" : ""}`}>
+            <div className="screen-frame">
+              <div className="screen-title">[ CLAW ]</div>
+              <div className="screen-content">
+                {kind === "sold" && (
+                  <div className="screen-single">
+                    <div className="screen-symbol">{state?.chosenSymbol ?? "—"}</div>
+                    <div className="screen-message">{message || "Position closed"}</div>
+                    <div className="screen-reason">Next: selecting in a few seconds…</div>
+                  </div>
+                )}
+                {showSelecting && kind !== "sold" && (
+                  <div className="screen-empty">
+                    {kind === "idle" ? "Selecting next coin… (filters: ≤1h, mcap, vol)" : "Searching for coins…"}
+                  </div>
+                )}
+                {hasPosition && (
+                  <div className="screen-single">
+                    <div className="screen-symbol">{effectiveSymbol}</div>
+                    <div className="screen-message">{message || "Position opened"}</div>
+                    {(effectiveMcap != null || state?.chosenHolderCount != null) && (
+                      <div className="screen-metrics">
+                        {effectiveMcap != null && (
+                          <span>Mcap @ entry ${(effectiveMcap / 1000).toFixed(1)}k</span>
+                        )}
+                        {state?.chosenHolderCount != null && (
+                          <span> · Holders: {state.chosenHolderCount}</span>
+                        )}
+                      </div>
+                    )}
                   {effectiveReason && (
                     <div className="screen-reason" title={effectiveReason}>
-                      Why: {effectiveReason}
+                      Why: {stripUrls(effectiveReason)}
                     </div>
                   )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="lobbi-message lobbi-message-above-lobster">
-        {hasPosition && (message ? `Bought ${effectiveSymbol}` : "Bought!")}
-        {searching && kind === "idle" && "Selecting next coin (filters: ≤1h old, mcap, vol)."}
-        {searching && (kind === "thinking" || kind === "choosing") && "Searching for coins…"}
-        {kind === "sold" && !openTrade && (message ? `${message} — selecting next…` : "Sold — selecting next…")}
-      </div>
-
-      <div className="lobbi-walk-container lobbi-below" aria-hidden>
-        <img
-          src="/lobbi.png"
-          alt="Lobbi"
-          className={`lobbi-sprite ${hasPosition ? "bought" : kind}`}
-        />
+        <div className="lobbi-sprite-container" aria-hidden>
+          <img
+            src="/lobbi.png"
+            alt="Lobbi"
+            className={`lobbi-sprite ${hasPosition ? "bought" : kind}`}
+          />
+        </div>
       </div>
     </div>
   );

@@ -67,6 +67,11 @@ export interface LobbiState {
   chosenReason?: string;
 }
 
+export interface BalanceChartPoint {
+  timestamp: string;
+  balanceSol: number;
+}
+
 export async function fetchTrades(): Promise<TradeRecord[]> {
   const res = await apiFetch("/trades");
   const data = await res.json();
@@ -89,6 +94,12 @@ export async function fetchPnl(): Promise<{ totalPnlSol: number; tradeCount: num
   const res = await apiFetch("/pnl");
   const data = await res.json();
   return { totalPnlSol: data.totalPnlSol ?? 0, tradeCount: data.tradeCount ?? 0 };
+}
+
+export async function fetchBalanceChart(): Promise<{ points: BalanceChartPoint[] }> {
+  const res = await apiFetch("/balance/chart");
+  const data = await res.json();
+  return { points: data.points ?? [] };
 }
 
 export async function fetchLobbiState(): Promise<LobbiState | null> {

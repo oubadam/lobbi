@@ -1,5 +1,5 @@
 /**
- * Agent API: used by the backend when OpenClaw (or another agent) drives trading.
+ * Agent API: used by the backend when Lobbi (running on OpenClaw) drives trading.
  * One position at a time. Agent calls getCandidates → choose → buy(mint) → later sell().
  */
 import type { CandidateCoin } from "./types.js";
@@ -8,7 +8,7 @@ import { discoverCandidates } from "./discovery.js";
 import { executeBuy, executeSell, recordOpenBuy, getWalletBalanceSol } from "./trade.js";
 import { getState, getOpenTrade, getRecentMints, clearStaleOpenTrades, updateOpenTradeToSold } from "./storage.js";
 import { emitBought, emitSold } from "./state.js";
-import { getTokenPriceUsd, getTokenMcapUsd } from "./price.js";
+import { getTokenPriceUsd, getTokenMcapUsd, getTokenStats } from "./price.js";
 import { planHold } from "./analysis.js";
 import { getHolderStats, hasBirdeyeApiKey } from "./birdeye.js";
 
@@ -99,7 +99,7 @@ export async function buy(params: BuyParams): Promise<{ ok: true; symbol: string
     mint: params.mint,
     symbol: params.symbol,
     name: params.name,
-    reason: params.reason ?? "OpenClaw agent",
+    reason: params.reason ?? "Lobbi",
     mcapUsd: undefined,
     volumeUsd: undefined,
   };
@@ -145,12 +145,15 @@ export async function sell(): Promise<
       if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
     }
     const sellTimestamp = new Date().toISOString();
-    const mcapAtSellUsd = await getTokenMcapUsd(open.mint).catch(() => undefined);
+    const statsAtSell = await getTokenStats(open.mint);
+    const mcapAtSellUsd = statsAtSell?.mcapUsd ?? (await getTokenMcapUsd(open.mint).catch(() => undefined));
+    const volumeAtSellUsd = statsAtSell?.volumeUsd;
     if (solReceived <= 0 && open.mcapUsd != null && open.mcapUsd > 0 && mcapAtSellUsd != null && mcapAtSellUsd > 0) {
       solReceived = open.buySol * (mcapAtSellUsd / open.mcapUsd);
     }
     if (solReceived <= 0) solReceived = open.buySol * 0.95;
-    updateOpenTradeToSold(solReceived, open.buyTokenAmount, sellTimestamp, res.tx, mcapAtSellUsd ?? undefined);
+    const whySold = "Agent exit";
+    updateOpenTradeToSold(solReceived, open.buyTokenAmount, sellTimestamp, res.tx, mcapAtSellUsd ?? undefined, whySold, volumeAtSellUsd);
     const pnlSol = solReceived - open.buySol;
     emitSold(open.mint, open.symbol, pnlSol, res.tx);
     return { ok: true, symbol: open.symbol, pnlSol, tx: res.tx };

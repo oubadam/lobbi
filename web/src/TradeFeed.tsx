@@ -1,6 +1,11 @@
 import { useState, useCallback, useMemo } from "react";
 import type { TradeRecord } from "./api";
 
+/** Strip DexScreener/chart URLs from text (Chart: https://...). */
+function stripUrls(text: string): string {
+  return text.replace(/\s*Chart:\s*https?:\/\/[^\s]+/gi, "").trim();
+}
+
 interface Props {
   trades: TradeRecord[];
 }
@@ -70,14 +75,18 @@ export function TradeFeed({ trades }: Props) {
                 {ev.type === "buy" && ev.trade.ageMinutesAtBuy != null && (
                   <span> · {ev.trade.ageMinutesAtBuy}m old</span>
                 )}
-                {ev.type === "sell" && ev.trade.mcapAtSellUsd != null && (
-                  <span className="trade-feed-row-mcap"> · Mcap @ sell ${(ev.trade.mcapAtSellUsd / 1000).toFixed(1)}k</span>
-                )}
-                {ev.type === "sell" && ev.trade.volumeAtSellUsd != null && (
-                  <span> · Vol @ sell ${(ev.trade.volumeAtSellUsd / 1000).toFixed(1)}k</span>
-                )}
-                {ev.type === "sell" && ev.trade.ageMinutesAtSell != null && (
-                  <span> · {ev.trade.ageMinutesAtSell}m old</span>
+                {ev.type === "sell" && (
+                  <>
+                    {ev.trade.mcapAtSellUsd != null && (
+                      <span className="trade-feed-row-mcap"> · Mcap @ sell ${(ev.trade.mcapAtSellUsd / 1000).toFixed(1)}k</span>
+                    )}
+                    {ev.trade.volumeAtSellUsd != null && (
+                      <span> · Vol @ sell ${(ev.trade.volumeAtSellUsd / 1000).toFixed(1)}k</span>
+                    )}
+                    {ev.trade.ageMinutesAtSell != null && (
+                      <span> · {ev.trade.ageMinutesAtSell}m old</span>
+                    )}
+                  </>
                 )}
                 <span className="trade-feed-row-sep"> · </span>
                 {ev.type === "buy" ? (
@@ -97,12 +106,12 @@ export function TradeFeed({ trades }: Props) {
               </div>
               {ev.type === "buy" && ev.trade.why && (
                 <div className="trade-feed-row-why" title={ev.trade.why}>
-                  Why bought: {ev.trade.why}
+                  Why bought: {stripUrls(ev.trade.why)}
                 </div>
               )}
               {ev.type === "sell" && ev.trade.whySold && (
                 <div className="trade-feed-row-why" title={ev.trade.whySold}>
-                  Why sold: {ev.trade.whySold}
+                  Why sold: {stripUrls(ev.trade.whySold)}
                 </div>
               )}
             </div>
