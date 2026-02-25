@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
+import { join, dirname, isAbsolute } from "path";
 import { fileURLToPath } from "url";
 import type { Filters } from "./types.js";
 
@@ -11,9 +11,11 @@ function findRoot(): string {
   }
   return root;
 }
-const root = process.env.CONFIG_DIR ? join(process.env.CONFIG_DIR, "..") : findRoot();
+const root = findRoot();
 const configDir = process.env.CONFIG_DIR || join(root, "config");
-const dataDir = process.env.DATA_DIR || join(root, "data");
+const dataDir = process.env.DATA_DIR
+  ? (isAbsolute(process.env.DATA_DIR) ? process.env.DATA_DIR : join(process.cwd(), process.env.DATA_DIR))
+  : join(root, "data");
 
 export function loadFilters(): Filters {
   try {

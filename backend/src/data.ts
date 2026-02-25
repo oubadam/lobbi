@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
+import { join, dirname, isAbsolute } from "path";
 import { fileURLToPath } from "url";
 
 function findRoot(): string {
@@ -13,8 +13,10 @@ function findRoot(): string {
   }
   return root;
 }
-const root = process.env.DATA_DIR ? join(process.env.DATA_DIR, "..") : findRoot();
-const dataDir = process.env.DATA_DIR || join(root, "data");
+const root = findRoot();
+const dataDir = process.env.DATA_DIR
+  ? (isAbsolute(process.env.DATA_DIR) ? process.env.DATA_DIR : join(process.cwd(), process.env.DATA_DIR))
+  : join(root, "data");
 const TRADES_FILE = "trades.json";
 const STATE_FILE = "state.json";
 
