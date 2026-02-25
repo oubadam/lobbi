@@ -308,10 +308,13 @@ async function runCycleBody(): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
+/** Start the trading loop. Can be called by backend to run bot in same process. */
+export async function startTradingLoop(): Promise<never> {
   releaseCycleLock();
   console.log("[Clawdbot] Data dir:", getDataDir());
   console.log("[Clawdbot] Demo mode:", DEMO_MODE);
+  const kp = loadKeypair();
+  console.log("[Clawdbot] Wallet:", kp ? kp.publicKey.toBase58().slice(0, 8) + "…" : "NOT SET");
   console.log("[Clawdbot] Filters:", JSON.stringify(loadFilters(), null, 2));
   const f = loadFilters();
   console.log(
@@ -348,4 +351,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+startTradingLoop();

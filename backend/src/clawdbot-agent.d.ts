@@ -29,5 +29,6 @@ declare module "clawdbot/agent" {
   export function getWalletBalanceSol(): Promise<number | null>;
 }
 
-
-// test
+declare module "clawdbot" {
+  export function startTradingLoop(): Promise<never>;
+}

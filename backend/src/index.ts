@@ -1,8 +1,12 @@
 import { config } from "dotenv";
 import { existsSync } from "fs";
-import { join } from "path";
-const envPath = [join(process.cwd(), ".env"), join(process.cwd(), "..", ".env")].find((p) => existsSync(p));
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = join(__dirname, "..", "..");
+const envPath = [join(root, ".env"), join(process.cwd(), ".env"), join(process.cwd(), "..", ".env")].find((p) => existsSync(p));
 if (envPath) config({ path: envPath });
+
 import express from "express";
 import cors from "cors";
 import { getTrades, getState, getFilters, getLogs } from "./data.js";
@@ -214,6 +218,9 @@ if (isProd) {
     app.get("*", (_req, res) => res.sendFile(join(webDist, "index.html")));
   }
 }
+
+// Run clawdbot trading loop in same process so wallet/env are shared
+import("clawdbot").catch((e) => console.error("[Backend] Clawdbot import failed:", e));
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`[Backend] API on http://0.0.0.0:${PORT}${isProd ? " (serving web)" : ""}`);
