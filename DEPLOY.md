@@ -1,5 +1,9 @@
 # Deploying Lobbi to Production
 
+**Quick path (free, 24/7, custom domain):** See **[docs/ORACLE-CLOUD-SETUP.md](docs/ORACLE-CLOUD-SETUP.md)** for step-by-step Oracle Cloud Free Tier setup.
+
+---
+
 ## What You Need Running
 
 1. **Backend** (Express API) — serves `/api/*` and in production also serves the built web app
