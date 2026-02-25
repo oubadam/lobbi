@@ -309,6 +309,7 @@ async function runCycleBody(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  releaseCycleLock();
   console.log("[Clawdbot] Data dir:", getDataDir());
   console.log("[Clawdbot] Demo mode:", DEMO_MODE);
   console.log("[Clawdbot] Filters:", JSON.stringify(loadFilters(), null, 2));

@@ -172,6 +172,6 @@ if (isProd) {
   }
 }
 
-app.listen(PORT, () => {
-  console.log(`[Backend] API on http://localhost:${PORT}${isProd ? " (serving web)" : ""}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[Backend] API on http://0.0.0.0:${PORT}${isProd ? " (serving web)" : ""}`);
 });
