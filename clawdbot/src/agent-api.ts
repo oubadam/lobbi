@@ -17,6 +17,15 @@ export interface AgentPosition {
   openTrade: ReturnType<typeof getOpenTrade>;
 }
 
+/** Unrealized PnL for open position (agent uses this to decide when to sell). */
+export interface PositionQuote {
+  currentPriceUsd: number | null;
+  unrealizedPnlPercent: number | null;
+  unrealizedPnlSol: number | null;
+  buyPriceUsd: number | null;
+  holdSeconds: number;
+}
+
 export interface BuyParams {
   mint: string;
   symbol: string;
@@ -28,11 +37,55 @@ export interface BuyParams {
 export async function getCandidates(): Promise<CandidateCoin[]> {
   const filters = loadFilters();
   const recent = new Set(getRecentMints(10));
-  return discoverCandidates(filters, { excludeMints: recent, poolSize: 12 });
+  const candidates = await discoverCandidates(filters, { excludeMints: recent, poolSize: 12 });
+  if (!hasBirdeyeApiKey() || candidates.length === 0) return candidates;
+  const enriched = await Promise.all(
+    candidates.slice(0, 6).map(async (c) => {
+      const stats = await getHolderStats(c.mint);
+      return {
+        ...c,
+        holderInfo: stats
+          ? `${stats.holderCount} holders, top10=${stats.top10PercentOfSupply.toFixed(0)}%${stats.isGoodHolders ? " (good)" : " (concentrated)"}`
+          : undefined,
+      };
+    })
+  );
+  return [...enriched, ...candidates.slice(6)];
 }
 
 export function getPosition(): AgentPosition {
   return { state: getState(), openTrade: getOpenTrade() };
+}
+
+const SOL_USD = 76.6;
+
+/** Position + current price / unrealized PnL so the agent can decide when to take profit. */
+export async function getPositionWithQuote(): Promise<AgentPosition & { quote?: PositionQuote }> {
+  const pos = getPosition();
+  const open = pos.openTrade;
+  if (!open || !open.buyTokenAmount || open.buyTokenAmount <= 0) return pos;
+  const buyTimestamp = open.buyTimestamp ? new Date(open.buyTimestamp).getTime() : Date.now();
+  const holdSeconds = Math.round((Date.now() - buyTimestamp) / 1000);
+  const currentPriceUsd = await getTokenPriceUsd(open.mint);
+  if (currentPriceUsd == null || currentPriceUsd <= 0) {
+    return { ...pos, quote: { currentPriceUsd: null, unrealizedPnlPercent: null, unrealizedPnlSol: null, buyPriceUsd: null, holdSeconds } };
+  }
+  const currentValueUsd = open.buyTokenAmount * currentPriceUsd;
+  const buyValueUsd = open.buySol * SOL_USD;
+  const sellValueSol = currentValueUsd / SOL_USD;
+  const unrealizedPnlSol = sellValueSol - open.buySol;
+  const unrealizedPnlPercent = buyValueUsd > 0 ? ((currentValueUsd - buyValueUsd) / buyValueUsd) * 100 : (unrealizedPnlSol / open.buySol) * 100;
+  const buyPriceUsd = buyValueUsd > 0 && open.buyTokenAmount > 0 ? buyValueUsd / open.buyTokenAmount : currentPriceUsd;
+  return {
+    ...pos,
+    quote: {
+      currentPriceUsd,
+      unrealizedPnlPercent,
+      unrealizedPnlSol,
+      buyPriceUsd,
+      holdSeconds,
+    },
+  };
 }
 
 export async function buy(params: BuyParams): Promise<{ ok: true; symbol: string; tx?: string } | { ok: false; error: string }> {
@@ -91,9 +144,12 @@ export async function sell(): Promise<
       const balAfter = await getWalletBalanceSol();
       if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
     }
-    if (solReceived <= 0) solReceived = open.buySol * 0.95;
     const sellTimestamp = new Date().toISOString();
     const mcapAtSellUsd = await getTokenMcapUsd(open.mint).catch(() => undefined);
+    if (solReceived <= 0 && open.mcapUsd != null && open.mcapUsd > 0 && mcapAtSellUsd != null && mcapAtSellUsd > 0) {
+      solReceived = open.buySol * (mcapAtSellUsd / open.mcapUsd);
+    }
+    if (solReceived <= 0) solReceived = open.buySol * 0.95;
     updateOpenTradeToSold(solReceived, open.buyTokenAmount, sellTimestamp, res.tx, mcapAtSellUsd ?? undefined);
     const pnlSol = solReceived - open.buySol;
     emitSold(open.mint, open.symbol, pnlSol, res.tx);

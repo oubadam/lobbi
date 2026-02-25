@@ -56,9 +56,14 @@ export function appendTrade(t: TradeRecord): void {
   tradesCache = all;
 }
 
-/** Remove any open (unclosed) trades so we never have more than one. Call before recording a new buy. */
+/** Remove any stale open trades (should never have one when recording a new buy). Call before recording a new buy. */
 export function clearStaleOpenTrades(): void {
   const all = loadTrades();
+  const open = all.find((t) => !t.sellTimestamp || t.sellTimestamp === "");
+  if (open) {
+    console.error("[Clawdbot] BUG: clearStaleOpenTrades called with open position:", open.symbol, "- refusing to clear to avoid trade disappearing");
+    return;
+  }
   const closedOnly = all.filter((t) => t.sellTimestamp && t.sellTimestamp !== "");
   if (closedOnly.length === all.length) return;
   writeFileSync(dataPath(TRADES_FILE), JSON.stringify(closedOnly, null, 2));

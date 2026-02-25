@@ -1,3 +1,8 @@
+import { config } from "dotenv";
+import { existsSync } from "fs";
+import { join } from "path";
+const envPath = [join(process.cwd(), ".env"), join(process.cwd(), "..", ".env")].find((p) => existsSync(p));
+if (envPath) config({ path: envPath });
 import express from "express";
 import cors from "cors";
 import { getTrades, getState, getFilters } from "./data.js";
@@ -67,19 +72,18 @@ app.get("/api/agent/candidates", async (_req, res) => {
   }
 });
 
-app.get("/api/agent/position", (_req, res) => {
-  import("clawdbot/agent")
-    .then(({ getPosition }) => {
-      const position = getPosition();
-      res.json(position);
-    })
-    .catch((e) => {
-      console.error("[Backend] Agent getPosition error:", e);
-      res.status(503).json({
-        error: "Agent API unavailable. Build clawdbot and set DATA_DIR.",
-        detail: e instanceof Error ? e.message : String(e),
-      });
+app.get("/api/agent/position", async (_req, res) => {
+  try {
+    const { getPositionWithQuote } = await import("clawdbot/agent");
+    const position = await getPositionWithQuote();
+    res.json(position);
+  } catch (e) {
+    console.error("[Backend] Agent getPosition error:", e);
+    res.status(503).json({
+      error: "Agent API unavailable. Build clawdbot and set DATA_DIR.",
+      detail: e instanceof Error ? e.message : String(e),
     });
+  }
 });
 
 app.post("/api/agent/buy", async (req, res) => {

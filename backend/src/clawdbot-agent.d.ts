@@ -17,6 +17,7 @@ declare module "clawdbot/agent" {
   }
   export function getCandidates(): Promise<Array<{ mint: string; symbol: string; name: string; reason: string; mcapUsd?: number; volumeUsd?: number }>>;
   export function getPosition(): AgentPosition;
+  export function getPositionWithQuote(): Promise<AgentPosition & { quote?: { currentPriceUsd: number | null; unrealizedPnlPercent: number | null; unrealizedPnlSol: number | null; holdSeconds: number } }>;
   export function buy(params: BuyParams): Promise<
     | { ok: true; symbol: string; tx?: string }
     | { ok: false; error: string }

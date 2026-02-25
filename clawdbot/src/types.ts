@@ -33,6 +33,11 @@ export interface CandidateCoin {
   pairCreatedAt?: number;
   globalFeesPaidSol?: number;
   liquidityUsd?: number;
+  /** Holder stats when BIRDEYE_API_KEY set: count, top10%, good/bad */
+  holderInfo?: string;
+  /** Social/url from metadata when available */
+  twitter?: string;
+  website?: string;
 }
 
 export interface TradeRecord {

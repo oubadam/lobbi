@@ -1,3 +1,5 @@
+import { getTokenPriceUsdBirdeye, hasBirdeyeApiKey } from "./birdeye.js";
+
 const DEXSCREENER = "https://api.dexscreener.com/latest/dex";
 const PUMP_BONDING_API = "https://api.pumpfunapis.com/api/bonding-curve";
 const LAMPORTS_PER_SOL = 1e9;
@@ -10,10 +12,7 @@ interface Pair {
   marketCap?: number;
 }
 
-/**
- * Fetch current token price in USD (or SOL) from DexScreener token-pairs.
- */
-export async function getTokenPriceUsd(mint: string): Promise<number | null> {
+async function getTokenPriceUsdDexScreener(mint: string): Promise<number | null> {
   try {
     const res = await fetch(`${DEXSCREENER}/token-pairs/v1/solana/${mint}`);
     if (!res.ok) return null;
@@ -25,6 +24,17 @@ export async function getTokenPriceUsd(mint: string): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Fetch current token price in USD. Tries Birdeye first (more accurate) if BIRDEYE_API_KEY is set, else DexScreener.
+ */
+export async function getTokenPriceUsd(mint: string): Promise<number | null> {
+  if (hasBirdeyeApiKey()) {
+    const p = await getTokenPriceUsdBirdeye(mint);
+    if (p != null && p > 0) return p;
+  }
+  return getTokenPriceUsdDexScreener(mint);
 }
 
 /** Fetch current token mcap (FDV) in USD from DexScreener. */

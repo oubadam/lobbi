@@ -1,3 +1,8 @@
+import { config } from "dotenv";
+import { existsSync } from "fs";
+import { join } from "path";
+const envPath = [join(process.cwd(), ".env"), join(process.cwd(), "..", ".env")].find((p) => existsSync(p));
+if (envPath) config({ path: envPath });
 import { loadFilters, getDataDir, DEMO_MODE } from "./config.js";
 import { setState, getOpenTrade, getRecentMints, tryAcquireCycleLock, releaseCycleLock, updateOpenTradeToSold, clearStaleOpenTrades } from "./storage.js";
 import { discoverCandidates } from "./discovery.js";
@@ -150,17 +155,25 @@ async function holdAndSell(
     const sellPriceUsdNow = await getTokenPriceUsd(mint);
     if (sellPriceUsdNow != null) solReceived = buySol * (sellPriceUsdNow / buyPriceUsd);
   }
-  if (solReceived <= 0) solReceived = buySol * 0.95;
-
   const mcapAtSellUsd = await getTokenMcapUsd(mint);
+  if (solReceived <= 0) {
+    const open = getOpenTrade();
+    if (open?.mcapUsd != null && open.mcapUsd > 0 && mcapAtSellUsd != null && mcapAtSellUsd > 0) {
+      solReceived = buySol * (mcapAtSellUsd / open.mcapUsd);
+    }
+  }
+  if (solReceived <= 0) solReceived = buySol * 0.95;
   updateOpenTradeToSold(solReceived, tokenAmount, sellTimestamp, txSell, mcapAtSellUsd ?? undefined);
   emitSold(mint, symbol, solReceived - buySol, txSell);
   await sleep(8000);
 }
 
+const LOCK_RETRY_MS = 30_000; // 30s backoff when another instance holds lock
+
 async function runCycle(): Promise<void> {
   if (!tryAcquireCycleLock()) {
-    console.log("[Clawdbot] Another instance holds the lock or a cycle is running. Skipping. Only run one bot.");
+    console.log("[Clawdbot] Another instance holds the lock or a cycle is running. Skipping. Retrying in 30s.");
+    await sleep(LOCK_RETRY_MS);
     return;
   }
   try {
@@ -267,6 +280,7 @@ async function runCycleBody(): Promise<void> {
   const { tokenAmount, tx: txBuy } = await executeBuy(chosen, buySol, filters);
   const buyTimestamp = new Date().toISOString();
 
+  const mcapAtBuyUsd = await getTokenMcapUsd(chosen.mint);
   clearStaleOpenTrades();
   recordOpenBuy(
     chosen.symbol,
@@ -277,11 +291,11 @@ async function runCycleBody(): Promise<void> {
     tokenAmount,
     buyTimestamp,
     txBuy,
-    chosen.mcapUsd
+    mcapAtBuyUsd ?? chosen.mcapUsd
   );
   const holderCount = holderStats?.holderCount;
   const buyReason = chosen.reason + " | hold: " + plan.reason;
-  emitBought(chosen.mint, chosen.symbol, txBuy, chosen.mcapUsd ?? undefined, holderCount, buyReason);
+  emitBought(chosen.mint, chosen.symbol, txBuy, mcapAtBuyUsd ?? chosen.mcapUsd ?? undefined, holderCount, buyReason);
   await sleep(2000);
 
   await holdAndSell(chosen.mint, chosen.symbol, buySol, tokenAmount, filters, plan);

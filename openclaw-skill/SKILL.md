@@ -1,32 +1,74 @@
 ---
 name: lobbi_trading
-description: Trade Solana memecoins on pump.fun via the LOBBI backend. Get candidates, check position, buy a coin, or sell the current position. The agent decides which coin to buy and when to sell.
+description: Trade Solana memecoins on pump.fun via LOBBI. Scan candidates (filtered by mcap, volume, age), pick based on narrative and holder quality, provide reasoning, and decide when to take profit.
 tools:
   - http
 ---
 
-# LOBBI Trading Skill
+# LOBBI Trading Skill — Full Agent Control
 
-You can trade Solana memecoins (pump.fun) through the LOBBI backend. Use the **http** tool to call the API. Base URL is usually `http://localhost:4000` unless the user set `LOBBI_AGENT_BASE_URL`.
+You trade Solana memecoins (pump.fun) through the LOBBI backend. **You** decide which coin to buy and when to sell. Use the **http** tool. Base URL: `http://localhost:4000` (or `LOBBI_AGENT_BASE_URL` if set).
+
+## Filters (enforced by LOBBI)
+
+Candidates are pre-filtered. To understand limits, call **GET /api/filters**. Typical ranges:
+- `maxMcapUsd`: 31400 — max market cap $31.4k
+- `minMcapUsd`: 10000
+- `minVolumeUsd`: 12000
+- `maxAgeMinutes`: 60 — coins older than 1h are excluded
+- `minGlobalFeesPaidSol`: 0.8 — bonding curve activity
 
 ## Endpoints
 
-1. **GET /api/agent/candidates**  
-   Returns a list of candidate coins the bot discovered (filters: new, mcap range, volume). Use this to choose a coin to buy. Each candidate has `mint`, `symbol`, `name`, `reason`, `mcapUsd`, `volumeUsd`.
+### GET /api/filters
+Returns the filter config. Use to understand mcap/volume/age limits.
 
-2. **GET /api/agent/position**  
-   Returns current state and open trade (if any). `state` has `kind` ("idle" | "thinking" | "choosing" | "bought" | "sold") and optional `chosenSymbol`, `chosenMint`. `openTrade` is the current position (mint, symbol, buySol, buyTokenAmount, etc.) or null if no position.
+### GET /api/agent/candidates
+Returns candidate coins (already filtered by mcap, volume, age). Each has:
+- `mint`, `symbol`, `name`
+- `reason` — e.g. "Vol $15k · Mcap $20k"
+- `mcapUsd`, `volumeUsd`, `liquidityUsd`
+- `holderInfo` — when Birdeye is configured: "N holders, top10=X% (good)" or "(concentrated)"
 
-3. **POST /api/agent/buy**  
-   Buy a coin. Body: `{ "mint": "<token mint>", "symbol": "<e.g. PEPE>", "name": "<full name>", "reason": "<why you are buying>", "amountSol": 0.1 }`. You must have gotten the coin from **candidates** (use its mint, symbol, name). Only one position at a time; if already in position, sell first.
+### GET /api/agent/position
+Returns current state and open trade. When holding a position, includes `quote`:
+- `currentPriceUsd`, `buyPriceUsd`
+- `unrealizedPnlPercent` — % gain/loss
+- `unrealizedPnlSol` — SOL gain/loss
+- `holdSeconds` — time in position
 
-4. **POST /api/agent/sell**  
-   Sell the current position. No body. Returns `{ "ok": true, "symbol", "pnlSol", "tx" }` or `{ "ok": false, "error": "..." }`.
+Use this to **decide when to take profit**. Check periodically when holding.
+
+### POST /api/agent/buy
+Buy a coin. Body: `{ "mint": "...", "symbol": "...", "name": "...", "reason": "<your reasoning>", "amountSol": 0.1 }`
+- Must use a coin from **candidates**
+- **Always provide a detailed `reason`**: narrative, holder quality, why this coin, why now
+
+### POST /api/agent/sell
+Sell the current position. No body. Call when **you** decide to take profit or cut loss.
+
+## Selection logic (narrative + data)
+
+1. **Get candidates** — they are pre-filtered.
+2. **Pick based on**:
+   - **Narrative**: Symbol, name, cultural relevance, meme potential, topicality
+   - **Holder quality** (when `holderInfo` exists): Prefer "good" (many holders, not concentrated). Avoid "concentrated"
+   - **Volume / mcap**: Higher volume often means more interest; liquidity ratio
+   - **Your judgment**: Which story will run? Which feels overdone?
+3. **Provide reasoning** in every buy: explain narrative, holder quality, why this coin, why now.
+
+## Take-profit logic
+
+**You** decide when to sell. Call **GET /api/agent/position** to see `quote`:
+- `unrealizedPnlPercent` — positive = profit, negative = loss
+- `holdSeconds` — time held
+- Consider: narrative played out? Target hit? Stop-loss? Time-based exit?
+
+Sell when you judge it's right: take profit, cut loss, or narrative exhausted.
 
 ## Workflow
 
-- To **buy**: Call GET candidates, pick one (explain why in `reason`), then POST buy with that coin’s mint, symbol, name and your reason.
-- To **sell**: Call POST sell. Only call when you want to close the position (e.g. user asked to sell, or you decide to take profit/cut loss).
-- To **check status**: Call GET position to see if there is an open position and what the dashboard state is.
-
-One position at a time. Always use the same DATA_DIR for LOBBI backend and (if running) the standalone clawdbot loop; when using this skill, prefer **only** the agent (do not run the automatic clawdbot loop so the OpenClaw agent is the only one trading).
+- **To buy**: GET candidates → pick one (narrative + holder + data) → POST buy with detailed `reason`
+- **To sell**: GET position (check quote) → POST sell when you decide
+- **One position at a time**. If already in position, sell first before buying.
+- Do **not** run the automatic clawdbot loop — only you (the agent) drive trades.

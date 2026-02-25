@@ -41,17 +41,18 @@ No Solana keys or RPC needed. The bot runs in **demo mode** and generates fake t
 
    The bot will cycle: idle → thinking → choosing (from 3 candidates on the ASCII screens) → buy → hold → sell, and write trades + state to `data/`. The website polls every 3s so you see Lobbi move and the trade feed update.
 
-## OpenClaw agent trading
+## OpenClaw agent trading (full AI control)
 
-You can have the **OpenClaw** personal AI ([openclaw.ai](https://openclaw.ai)) drive LOBBI trading instead of the automatic loop. The OpenClaw agent decides which coin to buy and when to sell using a skill that calls the LOBBI backend.
+The **OpenClaw** AI agent ([openclaw.ai](https://openclaw.ai)) drives LOBBI trading: scans candidates (filtered by mcap, volume, age), picks based on **narrative + holder quality**, provides reasoning, and **decides when to take profit**.
 
 1. **Requirement:** Node >= 22.12.0. Run `./scripts/setup-openclaw-lobbi.sh`.
-2. **First-time:** `openclaw onboard --install-daemon` (needs API key).
-3. **Terminal 1:** `DATA_DIR=./data node backend/dist/index.js`
-4. **Terminal 2:** `openclaw gateway --port 18789`
-5. **Chat:** `openclaw dashboard` — ask "What can LOBBI buy?" / "Buy a LOBBI coin" / "Sell LOBBI position".
+2. **First-time:** `openclaw onboard --install-daemon` (needs Anthropic/OpenAI key).
+3. **Terminal 1 — Backend:** `cd lobbi && DATA_DIR=./data node backend/dist/index.js`
+4. **Terminal 2 — OpenClaw gateway:** `openclaw gateway --port 18789`
+5. **Terminal 3 — Chat:** `openclaw dashboard` — ask "What can LOBBI buy?", "Buy a LOBBI coin", "Sell LOBBI position"
+6. **Optional — Web UI:** `npm run dev:web` to watch trades at http://localhost:5173
 
-When using OpenClaw to trade, **do not** run the standalone bot loop (`npm run dev:bot`) so only the agent is in control.
+**Do not** run `npm run dev:bot` — only OpenClaw drives trades.
 
 ## Project layout
 

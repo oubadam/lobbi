@@ -81,6 +81,25 @@ interface HolderDistributionResponse {
  * Get holder distribution (top N holders). Requires BIRDEYE_API_KEY.
  * Returns { holderCount, top10PercentOfSupply } for "good holders" scoring.
  */
+/**
+ * Fetch token price in USD from Birdeye. Requires BIRDEYE_API_KEY.
+ * Use for more accurate PnL when available.
+ */
+export async function getTokenPriceUsdBirdeye(mint: string): Promise<number | null> {
+  const key = getApiKey();
+  if (!key) return null;
+  try {
+    const url = `${BIRDEYE_BASE}/defi/price?address=${mint}`;
+    const res = await fetch(url, { headers: { ...COMMON_HEADERS, "X-API-KEY": key } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { data?: { value?: number } };
+    const v = data?.data?.value;
+    return typeof v === "number" && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getHolderStats(mint: string, topN = 10): Promise<{
   holderCount: number;
   top10PercentOfSupply: number;

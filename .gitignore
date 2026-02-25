@@ -1,7 +1,15 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 *.log
 .DS_Store
 data/*.json
 !data/.gitkeep
+
+# Secrets (never commit)
+secrets/
+.env.local
+.env.*.local
+config/secrets.json
