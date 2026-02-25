@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import type { LobbiState, TradeRecord } from "./api";
 
 /** Strip DexScreener/chart URLs from text. */
@@ -15,11 +16,20 @@ function getOpenTrade(trades: TradeRecord[]): TradeRecord | null {
 }
 
 export function LobbiScene({ state, trades }: Props) {
+  const [copiedMint, setCopiedMint] = useState(false);
   const kind = state?.kind ?? "idle";
   const message = state?.message ?? "";
   const openTrade = getOpenTrade(trades);
 
+  const copyMint = useCallback((mint: string) => {
+    navigator.clipboard.writeText(mint).then(() => {
+      setCopiedMint(true);
+      setTimeout(() => setCopiedMint(false), 2000);
+    });
+  }, []);
+
   const hasPosition = kind === "bought" || !!openTrade;
+  const positionMint = openTrade?.mint ?? state?.chosenMint;
   const effectiveSymbol = state?.chosenSymbol ?? openTrade?.symbol ?? "—";
   const effectiveMcap = state?.chosenMcapUsd ?? openTrade?.mcapUsd;
   const effectiveReason = state?.chosenReason ?? openTrade?.why;
@@ -28,19 +38,19 @@ export function LobbiScene({ state, trades }: Props) {
 
   return (
     <div className="panel lobbi-scene">
-      <div className="panel-title">[ LIVE CLAW ]</div>
+      <div className="panel-title">[ live claw ]</div>
       <div className="lobbi-status-bar">
         {(searching || kind === "sold") && !openTrade && (
           <span className="lobbi-status">
-            {kind === "sold" ? "Position closed · Selecting next coin…" : "No position · Selecting next coin…"}
+            {kind === "sold" ? "position closed · selecting next coin…" : "no position · selecting next coin…"}
           </span>
         )}
-        {hasPosition && <span className="lobbi-status lobbi-status-position">In position: {effectiveSymbol}</span>}
+        {hasPosition && <span className="lobbi-status lobbi-status-position">in position: {effectiveSymbol}</span>}
       </div>
 
       {(kind === "thinking" || kind === "choosing") && (
         <div className="thought-bubble">
-          <span className="blink">...</span> {kind === "choosing" ? "selecting coin ..." : "scanning pump.fun (≤1h old, mcap, vol) ..."}
+          <span className="blink">...</span> {kind === "choosing" ? "selecting coin ..." : "searching for coins ..."}
         </div>
       )}
 
@@ -48,39 +58,48 @@ export function LobbiScene({ state, trades }: Props) {
         <div className="screens-row screens-row-single">
           <div className={`ascii-screen ${hasPosition ? "selected" : ""}`}>
             <div className="screen-frame">
-              <div className="screen-title">[ CLAW ]</div>
+              <div className="screen-title">[ claw ]</div>
               <div className="screen-content">
                 {kind === "sold" && (
                   <div className="screen-single">
                     <div className="screen-symbol">{state?.chosenSymbol ?? "—"}</div>
-                    <div className="screen-message">{message || "Position closed"}</div>
-                    <div className="screen-reason">Next: selecting in a few seconds…</div>
+                    <div className="screen-message">{message || "position closed"}</div>
+                    <div className="screen-reason">next: selecting in a few seconds…</div>
                   </div>
                 )}
                 {showSelecting && kind !== "sold" && (
                   <div className="screen-empty">
-                    {kind === "idle" ? "Selecting next coin… (filters: ≤1h, mcap, vol)" : "Searching for coins…"}
+                    {kind === "idle" ? "selecting next coin…" : "searching for coins…"}
                   </div>
                 )}
-                {hasPosition && (
+                {hasPosition && positionMint && (
                   <div className="screen-single">
                     <div className="screen-symbol">{effectiveSymbol}</div>
-                    <div className="screen-message">{message || "Position opened"}</div>
+                    <div className="screen-message">{message || "position opened"}</div>
                     {(effectiveMcap != null || state?.chosenHolderCount != null) && (
                       <div className="screen-metrics">
                         {effectiveMcap != null && (
-                          <span>Mcap @ entry ${(effectiveMcap / 1000).toFixed(1)}k</span>
+                          <span>mcap @ entry ${(effectiveMcap / 1000).toFixed(1)}k</span>
                         )}
                         {state?.chosenHolderCount != null && (
-                          <span> · Holders: {state.chosenHolderCount}</span>
+                          <span> · holders: {state.chosenHolderCount}</span>
                         )}
                       </div>
                     )}
-                  {effectiveReason && (
-                    <div className="screen-reason" title={effectiveReason}>
-                      Why: {stripUrls(effectiveReason)}
-                    </div>
-                  )}
+                    {effectiveReason && (
+                      <div className="screen-reason" title={effectiveReason}>
+                        why: {stripUrls(effectiveReason)}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="screen-ca-btn"
+                      onClick={() => copyMint(positionMint)}
+                      title="copy contract address"
+                    >
+                      CA: {positionMint.slice(0, 6)}…{positionMint.slice(-4)}
+                      {copiedMint && " ✓"}
+                    </button>
                   </div>
                 )}
               </div>
@@ -90,7 +109,7 @@ export function LobbiScene({ state, trades }: Props) {
         <div className="lobbi-sprite-container" aria-hidden>
           <img
             src="/lobbi.png"
-            alt="Lobbi"
+            alt="lobbi"
             className={`lobbi-sprite ${hasPosition ? "bought" : kind}`}
           />
         </div>

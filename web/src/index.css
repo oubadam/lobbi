@@ -39,11 +39,23 @@ a {
 }
 a:hover { text-decoration: underline; }
 
+.app-wrap {
+  position: relative;
+  min-height: 100vh;
+}
+
 .app {
+  position: relative;
+  z-index: 1;
   max-width: 1100px;
   margin: 0 auto;
   padding: 24px 32px;
   text-align: left;
+}
+
+.app-cursor-trail {
+  width: 100vw;
+  height: 100vh;
 }
 
 /* Panels */
@@ -80,6 +92,8 @@ a:hover { text-decoration: underline; }
 .lobbi-status-bar {
   margin-bottom: 12px;
   font-size: 0.9rem;
+  text-align: center;
+  width: 100%;
 }
 
 .lobbi-status {
@@ -92,19 +106,28 @@ a:hover { text-decoration: underline; }
 }
 
 .lobbi-scene {
-  min-height: 280px;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
   position: relative;
   padding: 20px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lobbi-scene .panel-title {
+  text-align: center;
+  width: 100%;
 }
 
 .lobbi-claw-and-sprite {
   display: flex;
   align-items: center;
-  gap: 24px;
+  justify-content: center;
+  gap: 20px;
   flex-wrap: wrap;
   width: 100%;
 }
@@ -119,7 +142,7 @@ a:hover { text-decoration: underline; }
 .screens-row {
   display: flex;
   gap: 12px;
-  justify-content: flex-start;
+  justify-content: center;
   flex-wrap: wrap;
   margin-bottom: 0;
   width: 100%;
@@ -127,7 +150,7 @@ a:hover { text-decoration: underline; }
 
 .screens-row.screens-row-single {
   width: auto;
-  max-width: 400px;
+  max-width: 320px;
 }
 
 .screens-row-single .ascii-screen {
@@ -219,6 +242,23 @@ a:hover { text-decoration: underline; }
   overflow-wrap: anywhere;
   word-break: break-word;
   max-width: 100%;
+}
+
+.screen-ca-btn {
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  margin-top: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.screen-ca-btn:hover {
+  color: var(--lobbi-orange);
+  border-color: var(--lobbi-orange);
 }
 
 .screen-empty {
@@ -361,8 +401,8 @@ a:hover { text-decoration: underline; }
   min-width: 36px;
 }
 
-.trade-feed-row-buy .trade-feed-row-badge { color: var(--lobbi-orange); }
-.trade-feed-row-sell .trade-feed-row-badge { color: var(--muted); }
+.trade-feed-row-buy .trade-feed-row-badge { color: var(--green); }
+.trade-feed-row-sell .trade-feed-row-badge { color: var(--red); }
 
 .trade-feed-row-main {
   flex: 1;
@@ -412,6 +452,26 @@ a:hover { text-decoration: underline; }
   background: rgba(232, 93, 4, 0.1);
 }
 
+.trade-tx-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--lobbi-orange);
+  padding: 4px 10px;
+  margin-left: 8px;
+  background: rgba(232, 93, 4, 0.12);
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.trade-tx-link:hover {
+  background: rgba(232, 93, 4, 0.2);
+  color: var(--lobbi-orange);
+  text-decoration: none;
+}
+
 /* Balance & PnL */
 .stats-row {
   display: grid;
@@ -442,13 +502,16 @@ a:hover { text-decoration: underline; }
 }
 
 .header img {
-  width: 48px;
+  width: 80px;
   height: auto;
   image-rendering: pixelated;
 }
 
 .header-titles { flex: 1; }
-.header h1 { margin: 0 0 4px 0; }
+.header h1 {
+  margin: 0 0 4px 0;
+  color: var(--lobbi-orange);
+}
 .header-sub {
   display: block;
   font-size: 0.85rem;
@@ -510,6 +573,9 @@ a:hover { text-decoration: underline; }
 .balance-chart-label {
   font-size: 0.7rem;
   fill: var(--muted);
+}
+.balance-chart-x-label {
+  font-size: 0.6rem;
 }
 .balance-chart-empty {
   color: var(--muted);

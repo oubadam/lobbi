@@ -101,6 +101,9 @@ export async function executeSell(
     return { solReceived: 0, tx: "demo_sell_" + genId() };
   }
 
+  const conn = new Connection(rpc);
+  const balBefore = await conn.getBalance(keypair.publicKey);
+
   const buf = await fetchSerializedTx({
     publicKey: keypair.publicKey.toBase58(),
     action: "sell",
@@ -113,9 +116,13 @@ export async function executeSell(
   });
   const tx = VersionedTransaction.deserialize(new Uint8Array(buf));
   tx.sign([keypair]);
-  const conn = new Connection(rpc);
   const sig = await conn.sendTransaction(tx, { skipPreflight: false, maxRetries: 3 });
-  const solReceived = 0; // Would need to parse tx or get balance diff
+
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
+  await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+
+  const balAfter = await conn.getBalance(keypair.publicKey);
+  const solReceived = Math.max(0, (balAfter - balBefore) / LAMPORTS_PER_SOL);
   return { solReceived, tx: sig };
 }
 

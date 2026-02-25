@@ -33,7 +33,7 @@ export function loadFilters(): Filters {
       maxPositionPercent: 10,
       maxCandidates: 3,
       holdMinSeconds: 0,
-      holdMaxSeconds: 300,
+      holdMaxSeconds: 600, // 10 min max
       loopDelayMs: 0,
       takeProfitPercent: 50,
       stopLossPercent: -25,

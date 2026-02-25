@@ -46,10 +46,10 @@ export function TradeFeed({ trades }: Props) {
   if (events.length === 0) {
     return (
       <div className="panel">
-        <div className="panel-title">[ TRADE FEED — LIVE ]</div>
-        <p className="trade-feed-desc">Every buy and sell appears here as it happens. Refreshes every 3s.</p>
+        <div className="panel-title">[ trade feed — live ]</div>
+        <p className="trade-feed-desc">every buy and sell appears here as it happens. refreshes every 3s.</p>
         <div className="trade-feed">
-          <p className="trade-feed-empty">No trades yet. When Lobbi buys, a BUY row will appear; when he sells, a SELL row will appear.</p>
+          <p className="trade-feed-empty">no trades yet. when lobbi buys, a buy row will appear; when he sells, a sell row will appear.</p>
         </div>
       </div>
     );
@@ -57,34 +57,37 @@ export function TradeFeed({ trades }: Props) {
 
   return (
     <div className="panel">
-      <div className="panel-title">[ TRADE FEED — LIVE ]</div>
-      <p className="trade-feed-desc">Every buy and sell in time order. Refreshes every 3s.</p>
+      <div className="panel-title">[ trade feed — live ]</div>
+      <p className="trade-feed-desc">every buy and sell in time order. refreshes every 3s.</p>
       <div className="trade-feed trade-feed-rows">
         {events.map((ev, i) => (
           <div key={ev.type + ev.trade.id + ev.timestamp + i} className={`trade-feed-row trade-feed-row-${ev.type}`}>
-            <div className="trade-feed-row-badge">{ev.type === "buy" ? "BUY" : "SELL"}</div>
+            <div className="trade-feed-row-badge">{ev.type === "buy" ? "buy" : "sell"}</div>
             <div className="trade-feed-row-main">
               <div className="trade-feed-row-line1">
                 <span className="trade-symbol">{ev.trade.symbol}</span>
                 {ev.type === "buy" && ev.trade.mcapUsd != null && (
-                  <span className="trade-feed-row-mcap"> · Mcap @ buy ${(ev.trade.mcapUsd / 1000).toFixed(1)}k</span>
+                  <span className="trade-feed-row-mcap"> · mcap @ buy ${(ev.trade.mcapUsd / 1000).toFixed(1)}k</span>
                 )}
                 {ev.type === "buy" && ev.trade.volumeAtBuyUsd != null && (
-                  <span> · Vol @ buy ${(ev.trade.volumeAtBuyUsd / 1000).toFixed(1)}k</span>
+                  <span> · vol @ buy ${(ev.trade.volumeAtBuyUsd / 1000).toFixed(1)}k</span>
                 )}
                 {ev.type === "buy" && ev.trade.ageMinutesAtBuy != null && (
-                  <span> · {ev.trade.ageMinutesAtBuy}m old</span>
+                  <span> · Token was {ev.trade.ageMinutesAtBuy}m old at buy</span>
+                )}
+                {ev.type === "buy" && !ev.trade.sellTimestamp && (
+                  <span> · Holding {Math.floor((Date.now() - new Date(ev.trade.buyTimestamp).getTime()) / 60000)}m</span>
                 )}
                 {ev.type === "sell" && (
                   <>
                     {ev.trade.mcapAtSellUsd != null && (
-                      <span className="trade-feed-row-mcap"> · Mcap @ sell ${(ev.trade.mcapAtSellUsd / 1000).toFixed(1)}k</span>
+                      <span className="trade-feed-row-mcap"> · mcap @ sell ${(ev.trade.mcapAtSellUsd / 1000).toFixed(1)}k</span>
                     )}
                     {ev.trade.volumeAtSellUsd != null && (
-                      <span> · Vol @ sell ${(ev.trade.volumeAtSellUsd / 1000).toFixed(1)}k</span>
+                      <span> · vol @ sell ${(ev.trade.volumeAtSellUsd / 1000).toFixed(1)}k</span>
                     )}
                     {ev.trade.ageMinutesAtSell != null && (
-                      <span> · {ev.trade.ageMinutesAtSell}m old</span>
+                      <span> · Token was {ev.trade.ageMinutesAtSell}m old at sell</span>
                     )}
                   </>
                 )}
@@ -92,6 +95,11 @@ export function TradeFeed({ trades }: Props) {
                 {ev.type === "buy" ? (
                   <>
                     <span className="trade-feed-row-sol">{ev.trade.buySol.toFixed(4)} SOL</span>
+                    {ev.trade.txBuy && (
+                      <a href={`https://solscan.io/tx/${ev.trade.txBuy}`} target="_blank" rel="noopener noreferrer" className="trade-tx-link" title="view transaction on solscan">
+                        solscan tx ↗
+                      </a>
+                    )}
                     <span className="trade-feed-row-meta">{formatTime(ev.timestamp)}</span>
                   </>
                 ) : (
@@ -100,18 +108,23 @@ export function TradeFeed({ trades }: Props) {
                     <span className={`trade-feed-row-pnl ${ev.trade.pnlSol >= 0 ? "positive" : "negative"}`}>
                       {ev.trade.pnlSol >= 0 ? "+" : ""}{ev.trade.pnlSol.toFixed(4)} SOL
                     </span>
+                    {ev.trade.txSell && (
+                      <a href={`https://solscan.io/tx/${ev.trade.txSell}`} target="_blank" rel="noopener noreferrer" className="trade-tx-link" title="view transaction on solscan">
+                        solscan tx ↗
+                      </a>
+                    )}
                     <span className="trade-feed-row-meta">{formatTime(ev.timestamp)}</span>
                   </>
                 )}
               </div>
               {ev.type === "buy" && ev.trade.why && (
                 <div className="trade-feed-row-why" title={ev.trade.why}>
-                  Why bought: {stripUrls(ev.trade.why)}
+                  why bought: {stripUrls(ev.trade.why)}
                 </div>
               )}
               {ev.type === "sell" && ev.trade.whySold && (
                 <div className="trade-feed-row-why" title={ev.trade.whySold}>
-                  Why sold: {stripUrls(ev.trade.whySold)}
+                  why sold: {stripUrls(ev.trade.whySold)}
                 </div>
               )}
             </div>
@@ -119,7 +132,7 @@ export function TradeFeed({ trades }: Props) {
               type="button"
               className="trade-mint-btn-inline"
               onClick={() => copyMint(ev.trade.mint, ev.trade.id + ev.type)}
-              title="Copy contract address"
+              title="copy contract address"
             >
               CA: {ev.trade.mint.slice(0, 6)}…{ev.trade.mint.slice(-4)}
               {copiedId === ev.trade.id + ev.type && " ✓"}

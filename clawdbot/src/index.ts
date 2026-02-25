@@ -31,6 +31,8 @@ function pickOne<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
+const MAX_HOLD_SECONDS = 10 * 60; // 10 min hard cap—don't hold longer
+
 /** Hold position; Lobbi (via LLM) decides when to sell. Autonomous—no human prompt needed. */
 async function holdAndSell(
   mint: string,
@@ -49,16 +51,33 @@ async function holdAndSell(
     const open = getOpenTrade();
     if (!open || open.mint !== mint) return;
 
-    if (!hasLlm) continue;
+    const buyTimestamp = open.buyTimestamp ? new Date(open.buyTimestamp).getTime() : Date.now();
+    const holdSeconds = Math.round((Date.now() - buyTimestamp) / 1000);
 
-    const { quote } = await getPositionWithQuote();
-    if (!quote) continue;
+    let shouldSell: boolean;
+    let reason: string | undefined;
 
-    const { shouldSell, reason } = await askLobbiShouldSell(
-      symbol,
-      open.why ?? "",
-      quote
-    );
+    if (holdSeconds >= MAX_HOLD_SECONDS) {
+      console.log("[Lobbi] Max hold time reached (10m), forcing sell.");
+      shouldSell = true;
+      reason = "Max hold 10m";
+    } else if (!hasLlm) {
+      continue;
+    } else {
+      let quote: Awaited<ReturnType<typeof getPositionWithQuote>>["quote"];
+      try {
+        const pos = await getPositionWithQuote();
+        quote = pos.quote;
+      } catch (e) {
+        console.warn("[Lobbi] getPositionWithQuote failed:", e);
+        continue;
+      }
+      if (!quote) continue;
+
+      const result = await askLobbiShouldSell(symbol, open.why ?? "", quote);
+      shouldSell = result.shouldSell;
+      reason = result.reason;
+    }
     if (!shouldSell) continue;
 
     console.log("[Lobbi] Selling:", reason ?? "LLM decided");

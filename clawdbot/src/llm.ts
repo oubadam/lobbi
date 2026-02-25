@@ -29,7 +29,9 @@ export async function askLobbiShouldSell(
 
 Why we bought: ${whyBought}
 
-Current: PnL ${pnl.toFixed(1)}%, held ${holdMin}m. No fixed TP/SL—you decide.
+Current: PnL ${pnl.toFixed(1)}%, held ${holdMin}m.
+
+RULES: Max hold 10 minutes. Make proper decisions based on price action and momentum—memecoins can 2x or 10x in seconds, or dump hard. Cut losses around -20% to -30%. Take profits when momentum fades or you see clear exit signals. Use your judgment.
 
 Should we SELL now? Reply with exactly "SELL" or "HOLD". If SELL, add one short reason after a comma.`;
 

@@ -26,7 +26,7 @@ export function WalletBalanceChart({ points, width = 800, height = 240 }: Props)
       if (!svgRef.current || points.length < 2) return;
       const rect = svgRef.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * width;
-      const padding = { left: 56, right: 24, top: 16, bottom: 36 };
+      const padding = { left: 56, right: 24, top: 16, bottom: 44 };
       const chartW = width - padding.left - padding.right;
       const relX = (x - padding.left) / chartW;
       const idx = Math.round(relX * (points.length - 1));
@@ -43,7 +43,7 @@ export function WalletBalanceChart({ points, width = 800, height = 240 }: Props)
   if (points.length < 2) {
     return (
       <div className="balance-chart-empty">
-        Need at least 2 completed trades to show wallet balance chart.
+        need at least 2 completed trades to show wallet balance chart.
       </div>
     );
   }
@@ -52,9 +52,20 @@ export function WalletBalanceChart({ points, width = 800, height = 240 }: Props)
   const minBal = Math.min(...balances);
   const maxBal = Math.max(...balances);
   const range = maxBal - minBal || 0.1;
-  const padding = { top: 16, right: 24, bottom: 36, left: 56 };
+  const padding = { top: 16, right: 24, bottom: 44, left: 56 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
+
+  const yTickCount = 8;
+  const yTicks = Array.from({ length: yTickCount + 1 }, (_, i) => {
+    const t = i / yTickCount;
+    return minBal + (1 - t) * range;
+  });
+
+  const xTickCount = Math.min(6, points.length);
+  const xTickIndices = Array.from({ length: xTickCount }, (_, i) =>
+    Math.round((i / (xTickCount - 1 || 1)) * (points.length - 1))
+  );
 
   const x = (i: number) => padding.left + (i / (points.length - 1)) * chartW;
   const y = (v: number) => padding.top + chartH - ((v - minBal) / range) * chartH;
@@ -70,15 +81,53 @@ export function WalletBalanceChart({ points, width = 800, height = 240 }: Props)
         viewBox={`0 0 ${width} ${height}`}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        aria-label="Wallet balance over time"
+        aria-label="wallet balance over time"
       >
-        {/* Y-axis labels */}
-        <text x={padding.left - 8} y={padding.top} textAnchor="end" className="balance-chart-label">
-          {maxBal.toFixed(2)} SOL
-        </text>
-        <text x={padding.left - 8} y={padding.top + chartH} textAnchor="end" className="balance-chart-label">
-          {minBal.toFixed(2)} SOL
-        </text>
+        {/* Y-axis grid lines */}
+        {yTicks.map((val, i) => (
+          <g key={i}>
+            <line
+              x1={padding.left}
+              y1={y(val)}
+              x2={padding.left + chartW}
+              y2={y(val)}
+              stroke="var(--border)"
+              strokeWidth={1}
+              strokeDasharray="2 2"
+              opacity={0.6}
+            />
+            <text x={padding.left - 8} y={y(val)} textAnchor="end" className="balance-chart-label" dominantBaseline="middle">
+              {val.toFixed(2)} SOL
+            </text>
+          </g>
+        ))}
+        {/* X-axis labels (time) */}
+        {xTickIndices.map((idx) => {
+          const p = points[idx];
+          if (!p) return null;
+          return (
+            <g key={idx}>
+              <line
+                x1={x(idx)}
+                y1={padding.top}
+                x2={x(idx)}
+                y2={padding.top + chartH}
+                stroke="var(--border)"
+                strokeWidth={1}
+                strokeDasharray="2 2"
+                opacity={0.4}
+              />
+              <text
+                x={x(idx)}
+                y={padding.top + chartH + 20}
+                textAnchor="middle"
+                className="balance-chart-label balance-chart-x-label"
+              >
+                {formatTimestamp(p.timestamp)}
+              </text>
+            </g>
+          );
+        })}
         {/* Area fill */}
         <path
           d={`${pathD} L ${x(points.length - 1)} ${y(minBal)} L ${x(0)} ${y(minBal)} Z`}
