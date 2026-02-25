@@ -68,7 +68,7 @@ lobbi/
   - `maxPositionSol`, `slippagePercent`, `priorityFeeSol`, etc.
 - **Hold logic** — The bot analyses each coin (volume, mcap, liquidity, and optionally **holder distribution** when Birdeye is configured): high volume/mcap → longer hold and higher take-profit; good holders (many wallets, not concentrated) → longer hold; thin liquidity or concentrated holders → shorter max hold. In live mode it polls price and sells when take-profit or stop-loss is hit, or when max hold time is reached.
 - **Birdeye** (optional) — Set `BIRDEYE_API_KEY` to use Birdeye for **discovery** (token list by volume) and **holder stats** (top-10 concentration) to score "good holders" and adjust hold/TP. Without the key, discovery uses DexScreener only.
-- **Demo vs live** — If `SOLANA_RPC_URL` is not set, the bot runs in demo mode (no real swaps). To trade real coins on Pump.fun you need:
+- **Demo vs live** — If `SOLANA_RPC_URL` is not set, the bot runs in **demo mode** (no real swaps). Buy/sell amounts and PnL are **simulated** from DexScreener prices, so they can be approximate. When you **link a wallet** (set `SOLANA_RPC_URL` and `WALLET_PRIVATE_KEY`), the bot does real on-chain trades and **PnL is computed from the wallet’s actual SOL balance before/after each sell**, so the trade feed and total PnL are accurate. You need:
   - `SOLANA_RPC_URL` (e.g. Helius, QuickNode)
   - `WALLET_PRIVATE_KEY` (base58) for the bot wallet
   - Fund the bot wallet with SOL (e.g. 1 SOL to start)

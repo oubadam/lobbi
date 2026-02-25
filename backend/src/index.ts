@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { getTrades, getState } from "./data.js";
+import { getTrades, getState, getFilters } from "./data.js";
 
 const app = express();
 app.use(cors());
@@ -44,6 +44,11 @@ app.get("/api/pnl", (_req, res) => {
 app.get("/api/lobbi/state", (_req, res) => {
   const state = getState();
   res.json(state ?? { kind: "idle", at: new Date().toISOString() });
+});
+
+app.get("/api/filters", (_req, res) => {
+  const filters = getFilters();
+  res.json(filters);
 });
 
 app.listen(PORT, () => {

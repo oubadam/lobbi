@@ -19,6 +19,19 @@ const dataDir = process.env.DATA_DIR
   : join(root, "data");
 const TRADES_FILE = "trades.json";
 const STATE_FILE = "state.json";
+const configDir = join(root, "config");
+
+export interface FiltersConfig {
+  minVolumeUsd?: number;
+  minMcapUsd?: number;
+  maxMcapUsd?: number;
+  minGlobalFeesPaidSol?: number;
+  maxAgeMinutes?: number;
+  holdMinSeconds?: number;
+  holdMaxSeconds?: number;
+  takeProfitPercent?: number;
+  stopLossPercent?: number;
+}
 
 function readJson<T>(filename: string, fallback: T): T {
   const p = join(dataDir, filename);
@@ -28,6 +41,20 @@ function readJson<T>(filename: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function readConfigJson<T>(filename: string, fallback: T): T {
+  const p = join(configDir, filename);
+  if (!existsSync(p)) return fallback;
+  try {
+    return JSON.parse(readFileSync(p, "utf-8")) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+export function getFilters(): FiltersConfig {
+  return readConfigJson<FiltersConfig>("filters.json", {});
 }
 
 export interface TradeRecord {

@@ -68,6 +68,25 @@ a:hover { text-decoration: underline; }
   color: var(--red);
   background: #fff5f5 !important;
 }
+.panel-error-hint {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.filters-verify .panel-title {
+  margin-bottom: 8px;
+}
+.filters-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.filters-grid span {
+  white-space: nowrap;
+}
 
 /* Lobbi scene */
 .lobbi-status-bar {

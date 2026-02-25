@@ -2,6 +2,7 @@ import type { CandidateCoin, Filters } from "./types.js";
 import { getTokenList, hasBirdeyeApiKey } from "./birdeye.js";
 
 const DEXSCREENER = "https://api.dexscreener.com/latest/dex";
+const FETCH_TIMEOUT_MS = 12_000;
 
 interface DexPair {
   chainId: string;
@@ -23,6 +24,11 @@ function isPumpToken(addr: string): boolean {
 function parsePairs(data: { pairs?: DexPair[] }): DexPair[] {
   return data?.pairs ?? [];
 }
+function fetchWithTimeout(url: string): Promise<Response> {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { signal: c.signal }).finally(() => clearTimeout(t));
+}
 
 function collectFromPairs(
   pairs: DexPair[],
@@ -32,7 +38,8 @@ function collectFromPairs(
   candidates: CandidateCoin[],
   now: number,
   maxCount: number,
-  exclude?: Set<string>
+  exclude?: Set<string>,
+  allowMissingAge?: boolean
 ): void {
   for (const p of pairs) {
     if (p.chainId !== "solana") continue;
@@ -49,7 +56,7 @@ function collectFromPairs(
     const vol = p.volume?.h24 ?? 0;
     const mcap = p.fdv ?? p.marketCap ?? p.liquidity?.usd ?? 0;
     const created = p.pairCreatedAt ?? 0;
-    const ageOk = created >= now - filters.maxAgeMs;
+    const ageOk = created >= now - filters.maxAgeMs || (allowMissingAge && created === 0);
     const mcapOk = mcap <= filters.maxMcap && mcap >= filters.minMcap;
     if (vol >= filters.minVol && mcapOk && ageOk) {
       seen.add(mint);
@@ -161,7 +168,7 @@ export async function discoverCandidates(
 
   for (const q of queries) {
     try {
-      const res = await fetch(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
+      const res = await fetchWithTimeout(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
       if (!res.ok) continue;
       const data = (await res.json()) as { pairs?: DexPair[] };
       const pairs = parsePairs(data);
@@ -175,7 +182,7 @@ export async function discoverCandidates(
   if (candidates.length === 0) {
     for (const q of queries) {
       try {
-        const res = await fetch(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
+        const res = await fetchWithTimeout(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
         if (!res.ok) continue;
         const data = (await res.json()) as { pairs?: DexPair[] };
         collectFromPairs(parsePairs(data), relaxedVolMcapOnly, true, seen, candidates, now, poolSize, exclude);
@@ -189,7 +196,7 @@ export async function discoverCandidates(
   if (candidates.length === 0) {
     for (const q of ["pump", "solana", "trending"]) {
       try {
-        const res = await fetch(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
+        const res = await fetchWithTimeout(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
         if (!res.ok) continue;
         const data = (await res.json()) as { pairs?: DexPair[] };
         collectFromPairs(parsePairs(data), relaxedAll, true, seen, candidates, now, poolSize, exclude);
@@ -203,7 +210,7 @@ export async function discoverCandidates(
   if (candidates.length === 0) {
     for (const q of ["solana", "trending"]) {
       try {
-        const res = await fetch(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
+        const res = await fetchWithTimeout(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
         if (!res.ok) continue;
         const data = (await res.json()) as { pairs?: DexPair[] };
         collectFromPairs(parsePairs(data), relaxedAll, false, seen, candidates, now, poolSize, exclude);
@@ -213,21 +220,48 @@ export async function discoverCandidates(
       }
     }
   }
+  if (candidates.length === 0) {
+    for (const q of ["pump", "pumpswap", "solana"]) {
+      try {
+        const res = await fetchWithTimeout(`${DEXSCREENER}/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) continue;
+        const data = (await res.json()) as { pairs?: DexPair[] };
+        collectFromPairs(parsePairs(data), relaxedAll, true, seen, candidates, now, poolSize, exclude, true);
+        if (candidates.length >= poolSize) break;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 
   const maxAgeMsEnforce = filters.maxAgeMinutes * 60 * 1000;
   const nowMs = Date.now();
+  const minFees = filters.minGlobalFeesPaidSol ?? 0;
   const realOnly = candidates
     .filter((c) => !c.mint.startsWith("DemoMint"))
     .filter((c) => {
       if (c.mcapUsd != null && (c.mcapUsd < filters.minMcapUsd || c.mcapUsd > maxMcap)) return false;
       if (c.volumeUsd != null && c.volumeUsd < filters.minVolumeUsd) return false;
-      // Enforce max age: only allow coins with known creation time and age <= maxAgeMinutes
+      if (c.globalFeesPaidSol != null && c.globalFeesPaidSol < minFees) return false;
       if (c.pairCreatedAt == null) return false;
       if (nowMs - c.pairCreatedAt > maxAgeMsEnforce) return false;
       return true;
     });
-  if (realOnly.length === 0) {
-    return [];
+  if (realOnly.length > 0) {
+    return shuffle(realOnly).slice(0, maxCandidates);
   }
-  return shuffle(realOnly).slice(0, maxCandidates);
+  const fallback = candidates
+    .filter((c) => !c.mint.startsWith("DemoMint"))
+    .filter((c) => {
+      if (c.mcapUsd != null && (c.mcapUsd < filters.minMcapUsd || c.mcapUsd > maxMcap)) return false;
+      if (c.volumeUsd != null && c.volumeUsd < filters.minVolumeUsd) return false;
+      if (c.globalFeesPaidSol != null && c.globalFeesPaidSol < minFees) return false;
+      if (c.pairCreatedAt != null && c.pairCreatedAt > 0 && nowMs - c.pairCreatedAt > maxAgeMsEnforce) return false;
+      return true;
+    });
+  if (fallback.length > 0) {
+    console.warn("[discovery] No coins with age ≤1h; using", fallback.length, "candidates that pass mcap/vol only.");
+    return shuffle(fallback).slice(0, maxCandidates);
+  }
+  return [];
 }

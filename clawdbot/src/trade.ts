@@ -3,6 +3,22 @@ import { appendTrade } from "./storage.js";
 import { Connection, Keypair, VersionedTransaction } from "@solana/web3.js";
 import { loadKeypair } from "./wallet.js";
 
+const LAMPORTS_PER_SOL = 1e9;
+
+/** Get current wallet SOL balance (for accurate PnL when wallet is linked). Returns null if no wallet/RPC. */
+export async function getWalletBalanceSol(): Promise<number | null> {
+  const keypair = loadKeypair();
+  const rpc = process.env.SOLANA_RPC_URL;
+  if (!keypair || !rpc) return null;
+  try {
+    const conn = new Connection(rpc);
+    const lamports = await conn.getBalance(keypair.publicKey);
+    return lamports / LAMPORTS_PER_SOL;
+  } catch {
+    return null;
+  }
+}
+
 const PUMP_TRADE_URL = "https://pumpportal.fun/api/trade-local";
 
 function genId(): string {
@@ -82,8 +98,7 @@ export async function executeSell(
   const keypair = loadKeypair();
   const rpc = process.env.SOLANA_RPC_URL;
   if (!keypair || !rpc) {
-    const solReceived = (tokenAmount / 1e6) * (0.00008 + Math.random() * 0.00004);
-    return { solReceived, tx: "demo_sell_" + genId() };
+    return { solReceived: 0, tx: "demo_sell_" + genId() };
   }
 
   const buf = await fetchSerializedTx({

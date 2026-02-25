@@ -1,4 +1,6 @@
 const DEXSCREENER = "https://api.dexscreener.com/latest/dex";
+const PUMP_BONDING_API = "https://api.pumpfunapis.com/api/bonding-curve";
+const LAMPORTS_PER_SOL = 1e9;
 
 interface Pair {
   baseToken?: { address: string };
@@ -54,4 +56,22 @@ export function usdToSolApprox(usd: number): number {
 
 export function getSolPriceUsd(): number {
   return SOL_PRICE_USD;
+}
+
+/**
+ * Fetch bonding curve real SOL reserves for a pump.fun token (proxy for "global fees paid" / activity).
+ * Returns SOL amount or null if not a pump token or API fails.
+ */
+export async function getBondingCurveSolReserves(mint: string): Promise<number | null> {
+  if (!mint || !mint.endsWith("pump")) return null;
+  try {
+    const res = await fetch(`${PUMP_BONDING_API}/${mint}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { real_sol_reserves?: number; realSolReserves?: number };
+    const lamports = data?.real_sol_reserves ?? data?.realSolReserves;
+    if (lamports == null) return null;
+    return lamports / LAMPORTS_PER_SOL;
+  } catch {
+    return null;
+  }
 }

@@ -1,9 +1,9 @@
 import { loadFilters, getDataDir, DEMO_MODE } from "./config.js";
 import { setState, getRecentMints, tryAcquireCycleLock, releaseCycleLock, updateOpenTradeToSold, clearStaleOpenTrades } from "./storage.js";
 import { discoverCandidates } from "./discovery.js";
-import { executeBuy, executeSell, recordOpenBuy } from "./trade.js";
+import { executeBuy, executeSell, recordOpenBuy, getWalletBalanceSol } from "./trade.js";
 import { planHold } from "./analysis.js";
-import { getTokenPriceUsd, getTokenMcapUsd } from "./price.js";
+import { getTokenPriceUsd, getTokenMcapUsd, getBondingCurveSolReserves } from "./price.js";
 import { getHolderStats, hasBirdeyeApiKey } from "./birdeye.js";
 import {
   emitIdle,
@@ -15,7 +15,7 @@ import {
 import type { CandidateCoin, LobbiState } from "./types.js";
 
 const LOOP_DELAY_MS = 3 * 60 * 1000;
-const HOLD_POLL_MS = 10_000;
+const HOLD_POLL_MS = 5_000;
 const MIN_HOLD_MS = 2 * 60 * 1000;
 
 function sleep(ms: number): Promise<void> {
@@ -52,6 +52,7 @@ async function runCycleBody(): Promise<void> {
     poolSize: 12,
   });
   if (candidates.length === 0) {
+    console.log("[Clawdbot] No candidates found this cycle (filters: ≤1h old, mcap $10k–$31.4k, min vol $12k). Retrying next cycle.");
     emitIdle();
     return;
   }
@@ -78,6 +79,25 @@ async function runCycleBody(): Promise<void> {
   }
   if (chosen.pairCreatedAt != null && Date.now() - chosen.pairCreatedAt > maxAgeMs) {
     console.warn("[Clawdbot] Chosen coin too old, skipping");
+    emitIdle();
+    return;
+  }
+  const minFeesSol = filters.minGlobalFeesPaidSol ?? 0.8;
+  if (chosen.mint.endsWith("pump")) {
+    const curveSol = await getBondingCurveSolReserves(chosen.mint);
+    if (curveSol != null && curveSol < minFeesSol) {
+      console.warn("[Clawdbot] Chosen coin bonding curve SOL", curveSol.toFixed(2), "< min", minFeesSol, "SOL, skipping");
+      emitIdle();
+      return;
+    }
+    if (curveSol == null) {
+      console.warn("[Clawdbot] Could not fetch bonding curve for", chosen.symbol, ", skipping (require min 0.8 SOL fees)");
+      emitIdle();
+      return;
+    }
+  }
+  if (chosen.globalFeesPaidSol != null && chosen.globalFeesPaidSol < minFeesSol) {
+    console.warn("[Clawdbot] Chosen coin below min global fees paid (0.8 SOL), skipping");
     emitIdle();
     return;
   }
@@ -108,9 +128,10 @@ async function runCycleBody(): Promise<void> {
   let sellTimestamp = "";
   let solReceived = 0;
   let txSell: string | undefined;
+  let buyPriceUsd: number | null = null;
 
   if (DEMO_MODE) {
-    const buyPriceUsd = await getTokenPriceUsd(chosen.mint);
+    buyPriceUsd = await getTokenPriceUsd(chosen.mint);
     console.log("[Clawdbot] Holding position for at least 2 min (enforced)...");
     await sleep(MIN_HOLD_MS);
     const extraMs = Math.min(
@@ -122,20 +143,21 @@ async function runCycleBody(): Promise<void> {
       console.log("[Clawdbot] Extra hold", Math.round(extra / 1000), "s");
       await sleep(extra);
     }
-    const sellPriceUsd = await getTokenPriceUsd(chosen.mint);
+    let sellPriceUsd = await getTokenPriceUsd(chosen.mint);
+    if (sellPriceUsd == null) {
+      await sleep(2000);
+      sellPriceUsd = await getTokenPriceUsd(chosen.mint) ?? undefined;
+    }
     const res = await executeSell(chosen.mint, tokenAmount, filters);
     txSell = res.tx;
     if (buyPriceUsd != null && buyPriceUsd > 0 && sellPriceUsd != null) {
       solReceived = buySol * (sellPriceUsd / buyPriceUsd);
     } else {
-      const r = Math.random();
-      if (r < 0.4) solReceived = buySol * (1 + plan.takeProfitPercent / 100);
-      else if (r < 0.65) solReceived = buySol * (1 + plan.stopLossPercent / 100);
-      else solReceived = buySol * (0.95 + Math.random() * 0.1);
+      solReceived = buySol * 0.95;
     }
     sellTimestamp = new Date().toISOString();
   } else {
-    const buyPriceUsd = await getTokenPriceUsd(chosen.mint);
+    buyPriceUsd = await getTokenPriceUsd(chosen.mint);
     const start = Date.now();
     const tpMult = 1 + plan.takeProfitPercent / 100;
     const slMult = 1 + plan.stopLossPercent / 100;
@@ -150,18 +172,32 @@ async function runCycleBody(): Promise<void> {
       const priceUsd = await getTokenPriceUsd(chosen.mint);
       if (priceUsd != null && buyPriceUsd != null && buyPriceUsd > 0) {
         if (priceUsd >= buyPriceUsd * tpMult) {
+          const balBefore = await getWalletBalanceSol();
           const res = await executeSell(chosen.mint, tokenAmount, filters);
           sellTimestamp = new Date().toISOString();
-          solReceived = res.solReceived;
           txSell = res.tx;
+          if (res.solReceived <= 0 && balBefore != null) {
+            await sleep(5000);
+            const balAfter = await getWalletBalanceSol();
+            if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
+          } else {
+            solReceived = res.solReceived;
+          }
           sold = true;
           break;
         }
         if (priceUsd <= buyPriceUsd * slMult) {
+          const balBefore = await getWalletBalanceSol();
           const res = await executeSell(chosen.mint, tokenAmount, filters);
           sellTimestamp = new Date().toISOString();
-          solReceived = res.solReceived;
           txSell = res.tx;
+          if (res.solReceived <= 0 && balBefore != null) {
+            await sleep(5000);
+            const balAfter = await getWalletBalanceSol();
+            if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
+          } else {
+            solReceived = res.solReceived;
+          }
           sold = true;
           break;
         }
@@ -170,23 +206,42 @@ async function runCycleBody(): Promise<void> {
     }
 
     if (!sold) {
+      const balBefore = await getWalletBalanceSol();
       const res = await executeSell(chosen.mint, tokenAmount, filters);
       sellTimestamp = new Date().toISOString();
-      solReceived = res.solReceived;
       txSell = res.tx;
+      if (res.solReceived <= 0 && balBefore != null) {
+        await sleep(5000);
+        const balAfter = await getWalletBalanceSol();
+        if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
+      } else {
+        solReceived = res.solReceived;
+      }
     }
-    if (solReceived === 0 && buyPriceUsd != null && buyPriceUsd > 0) {
+    if (solReceived <= 0 && buyPriceUsd != null && buyPriceUsd > 0) {
       const sellPriceUsd = await getTokenPriceUsd(chosen.mint);
       if (sellPriceUsd != null) solReceived = buySol * (sellPriceUsd / buyPriceUsd);
     }
   }
 
   if (!sellTimestamp) {
+    const balBefore = await getWalletBalanceSol();
     const res = await executeSell(chosen.mint, tokenAmount, filters);
     sellTimestamp = new Date().toISOString();
-    solReceived = res.solReceived;
     txSell = res.tx;
+    if (res.solReceived <= 0 && balBefore != null) {
+      await sleep(5000);
+      const balAfter = await getWalletBalanceSol();
+      if (balAfter != null) solReceived = Math.max(0, balAfter - balBefore);
+    } else {
+      solReceived = res.solReceived;
+    }
   }
+  if (solReceived <= 0 && buyPriceUsd != null && buyPriceUsd > 0) {
+    const sellPriceUsdNow = await getTokenPriceUsd(chosen.mint);
+    if (sellPriceUsdNow != null) solReceived = buySol * (sellPriceUsdNow / buyPriceUsd);
+  }
+  if (solReceived <= 0) solReceived = buySol * 0.95;
 
   const mcapAtSellUsd = await getTokenMcapUsd(chosen.mint);
 
