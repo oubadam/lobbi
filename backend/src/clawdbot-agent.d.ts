@@ -26,4 +26,5 @@ declare module "clawdbot/agent" {
     | { ok: true; symbol: string; pnlSol: number; tx?: string }
     | { ok: false; error: string }
   >;
+  export function getWalletBalanceSol(): Promise<number | null>;
 }
